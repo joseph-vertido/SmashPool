@@ -804,15 +804,12 @@ function PublicBettorBreakdown({ pair, prizePool }) {
       {bettors.map((item, index) => {
         const wager = Number(item.amount || 0);
         const projectedPayout = pairTotal > 0 ? currentPrizePool * (wager / pairTotal) : 0;
-        return <div className="bettor-breakdown-item" key={`anonymous-${index}-${wager}`}>
-          <div className="bettor-breakdown-person">
-            <span className="bettor-breakdown-avatar">{index + 1}</span>
-            <div><strong>Anonymous Bettor {index + 1}</strong>{Number(item.betCount || 0) > 1 && <span>{Number(item.betCount)} bets combined</span>}</div>
-          </div>
+        return <div className="bettor-breakdown-item wager-only" key={`anonymous-${index}-${wager}`}>
           <div className="bettor-breakdown-values">
             <div><span>Wager</span><strong className="bettor-breakdown-amount">{currency(wager)}</strong></div>
             <div><span>Projected payout</span><strong className="bettor-breakdown-payout">{currency(projectedPayout)}</strong></div>
           </div>
+          {Number(item.betCount || 0) > 1 && <div className="bettor-breakdown-combined">{Number(item.betCount)} bets combined</div>}
         </div>;
       })}
     </div> : <div className="bettor-breakdown-empty">No bets have been placed on this pair yet.</div>}

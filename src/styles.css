@@ -433,8 +433,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-pair-card>.public-bettor-breakdown{margin-left:-14px;margin-right:-14px;margin-bottom:-15px;padding-left:14px;padding-right:14px}
   .bettor-breakdown-heading>span{font-size:12px}
   .bettor-breakdown-heading>strong{font-size:13px}
-  .bettor-breakdown-person strong{font-size:15px}
-  .bettor-breakdown-person span{font-size:12px}
   .bettor-breakdown-values span{font-size:11px}
   .bettor-breakdown-amount,.bettor-breakdown-payout{font-size:16px}
 }
@@ -603,8 +601,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   /* Anonymous bettor breakdown. */
   .bettor-breakdown-heading>span{font-size:13px}
   .bettor-breakdown-heading>strong{font-size:14px}
-  .bettor-breakdown-person strong{font-size:15px}
-  .bettor-breakdown-person span{font-size:12px}
   .bettor-breakdown-values span{font-size:11px}
   .bettor-breakdown-amount,.bettor-breakdown-payout{font-size:16px}
   .bettor-breakdown-empty{font-size:13px}
@@ -646,6 +642,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-dashboard .bettor-breakdown-values>div{min-width:70px}
 }
 @media (max-width:370px){
-  .public-dashboard .bettor-breakdown-item{align-items:flex-start;flex-wrap:wrap}
-  .public-dashboard .bettor-breakdown-values{width:100%;justify-content:flex-start;padding-left:49px;text-align:left}
+  .public-dashboard .bettor-breakdown-item.wager-only{align-items:flex-start;flex-wrap:wrap}
+  .public-dashboard .bettor-breakdown-values{width:100%;justify-content:flex-start;padding-left:0;text-align:left}
+}
+
+/* v2.1.13: anonymous wager cards show values only — no bettor label/avatar. */
+.public-dashboard .bettor-breakdown-item.wager-only{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.public-dashboard .bettor-breakdown-item.wager-only .bettor-breakdown-values{flex:1;justify-content:flex-start}
+.public-dashboard .bettor-breakdown-combined{font-size:11px;color:var(--muted);white-space:nowrap}
+@media(max-width:520px){
+  .public-dashboard .bettor-breakdown-item.wager-only{align-items:flex-start;flex-direction:column;gap:7px}
+  .public-dashboard .bettor-breakdown-item.wager-only .bettor-breakdown-values{width:100%;justify-content:space-between}
+  .public-dashboard .bettor-breakdown-combined{font-size:11px}
 }

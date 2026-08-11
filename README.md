@@ -1,8 +1,13 @@
-# SmashPool React + Firebase v2.1.12
+# SmashPool React + Firebase v2.1.13
+
+### v2.1.13
+
+- Public **Anonymous Wagers on This Pair** cards now show wager values only. The `Anonymous Bettor` label and numbered square/avatar have been removed.
+- Combined-bet count remains visible when an anonymous wager represents multiple entries.
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
-## v2.1.12 anonymous wager projected payouts
+## v2.1.13 anonymous wager projected payouts
 
 - Expanded public **Anonymous Wagers on This Pair** cards now show both the existing wager amount and its **Projected Payout** if that pair wins at the current pool state.
 - Projected payout uses the current distributable prize pool multiplied by that anonymous bettor's share of all wagers on the selected pair.
