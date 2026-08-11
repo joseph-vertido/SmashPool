@@ -1,67 +1,185 @@
-# SmashPool — Badminton Pari-Mutuel Manager
+# SmashPool React + Firebase v2.1.0
 
-**Version 1.3.0**
+SmashPool is now split into two browser interfaces backed by Firebase:
 
-A local Electron desktop application for managing a flexible badminton tournament pari-mutuel pool.
+- `/` — **Public Dashboard** (read-only)
+- `/admin` — **Admin Manager** (Firebase Authentication required)
 
-## Features
+The administrator manages pairs, profile photos, bets, pool settings, settlement, imports, and exports. Each admin change is saved to Firestore and a sanitized dashboard snapshot is published for public viewers in real time.
 
-- Flexible pair count with add/delete controls
-- Two pair groups: **Advantage** and **Challenge**
-- Drag and drop pairs between Advantage and Challenge
-- Editable player names and individual player profile pictures
-- Automatic square crop, resize, compression, and local photo storage
-- Player photos displayed throughout the dashboard and betting interface
-- Persistent interface zoom from 70% to 150%, plus Ctrl/Cmd +, Ctrl/Cmd -, and Ctrl/Cmd 0
-- Live pari-mutuel pool totals and projected return multipliers
-- **Projected Returns automatically ordered by total amount wagered, highest to lowest**
-- **Most Bet-On Pair** dashboard card with player photos and pool share
-- Bettor count per pair and 10 most recent Bet Activity entries
-- Bet entry with quick amounts and pre-bet payout preview
-- Complete bet ledger with search and deletion
-- Configurable pool deduction percentage (defaults to 0%)
-- Close/reopen betting
-- Winner settlement with proportional payouts and Undo Final Payout
-- Settlement CSV export and full tournament JSON export
-- Automatic local persistence
-- Secure Electron renderer setup using context isolation, sandboxing, and a narrow preload API
+## Firebase project
 
-## Version 1.3.0 changes
+This build is preconfigured for the project ID:
 
-- Replaced legacy Group A / Group B with **Advantage** and **Challenge**.
-- Added **+ Add Pair** controls to both groups.
-- Added pair deletion with an in-app warning when a pair already has bets. Deleting that pair also removes its linked bets and recalculates the pool.
-- Added drag-and-drop movement between Advantage and Challenge; group changes save automatically.
-- Removed the fixed 10-pair save restriction. The app now supports any number of pairs.
-- Older saves migrate automatically: Group A becomes Advantage and Group B becomes Challenge.
-- Bet entry and settlement selectors are grouped under Advantage and Challenge.
+`smashpool-d6818`
 
-## How the payout works
+You still need the Firebase **Web App configuration** from your project.
 
-For the winning pair:
+## 1. Register / locate your Firebase Web App
 
-`bettor return = (bettor's winning stake / total amount wagered on winner) × distributable prize pool`
+In Firebase Console:
 
-The distributable prize pool is:
+1. Open **Project settings**.
+2. Under **General → Your apps**, register a Web app if one does not already exist.
+3. Copy the Firebase config values.
+4. Copy `.env.example` to `.env`.
+5. Paste the values into `.env`.
 
-`total pool × (1 - deduction percentage)`
+Example:
 
-The displayed multiplier is a live projection and changes until betting closes.
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=smashpool-d6818
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_SMASHPOOL_POOL_ID=main
+```
 
-## Run
+`VITE_FIREBASE_STORAGE_BUCKET` is optional. See **Profile photos** below.
 
-1. Install Node.js/npm if needed.
-2. Open a terminal in this folder.
-3. Run:
+## 2. Enable admin login
+
+In Firebase Console:
+
+1. Open **Authentication**.
+2. Enable **Email/Password** as a sign-in provider.
+3. Create your admin user in **Authentication → Users**.
+4. Copy that user's Firebase **UID**.
+5. In Firestore, create this document:
+
+```
+admins/<YOUR_FIREBASE_UID>
+```
+
+Add this field:
+
+```text
+active = true   (Boolean)
+```
+
+Only users with an active `admins/{uid}` document are allowed to access the full pool state or make changes.
+
+## 3. Deploy Firestore security rules
+
+The included `firestore.rules` gives:
+
+- Everyone: read access to `publicPools/*` only.
+- Approved admins: read/write access to `adminPools/*` and write access to `publicPools/*`.
+- Nobody from the browser: permission to create or modify admin allow-list records.
+
+Using Firebase CLI:
+
+```bash
+firebase login
+firebase use smashpool-d6818
+firebase deploy --only firestore:rules
+```
+
+## 4. Profile photos
+
+### Recommended: Firebase Storage
+
+If `VITE_FIREBASE_STORAGE_BUCKET` is configured, profile photos are resized by SmashPool, uploaded to Firebase Storage, and only the resulting URL is stored in Firestore.
+
+Deploy the included Storage rules:
+
+```bash
+firebase deploy --only storage
+```
+
+The included rules make profile photos publicly readable because the public dashboard needs them, while only approved admins can upload/delete them.
+
+### Without Firebase Storage
+
+If you leave `VITE_FIREBASE_STORAGE_BUCKET` blank, SmashPool continues to store compressed profile pictures directly inside the Firestore pool document as data URLs. This avoids needing Firebase Storage, but it is best for smaller tournaments because Firestore has a per-document size limit.
+
+## 5. Run locally
 
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-The project targets Electron 43.x.
+Then open:
 
-## Notes
+- Public: `http://localhost:5173/`
+- Admin: `http://localhost:5173/admin`
 
-- This app records wagers locally; it does not accept or process payments.
-- Confirm that any real-money pool is permitted under the rules and laws applicable to your event/location before using it with money.
+## 6. Deploy to Firebase Hosting
+
+The included `firebase.json` has the SPA rewrite needed for `/admin`.
+
+```bash
+npm run build
+firebase deploy --only hosting
+```
+
+If you enabled Firebase Storage, you can deploy everything together:
+
+```bash
+npm run build
+firebase deploy
+```
+
+If you are **not** using Firebase Storage, deploy only Hosting and Firestore rules:
+
+```bash
+npm run build
+firebase deploy --only hosting,firestore:rules
+```
+
+The build can also be hosted on Vercel or Netlify. SPA rewrites are included for both.
+
+## Firestore layout
+
+```text
+admins/
+  <firebase-user-uid>
+    active: true
+
+adminPools/
+  main
+    state: { full private tournament state + bet ledger }
+
+publicPools/
+  main
+    tournamentName
+    bettingOpen
+    totalPool
+    prizePool
+    uniqueBettors
+    totalBets
+    mostBetOnPairId
+    pairs[]           # pair/player/photo + aggregate pool data only
+    recentBets[]      # the 10 entries displayed by the public Dashboard
+```
+
+If Firebase Storage is enabled:
+
+```text
+profilePhotos/
+  main/
+    <pair-id>/
+      player1.webp
+      player2.webp
+```
+
+## Realtime behavior
+
+The public page listens to `publicPools/main`. When the administrator changes the tournament, the admin app writes both the private state and the sanitized public dashboard snapshot in one Firestore batch. Public browsers update automatically without refreshing.
+
+## Migrating your existing SmashPool data
+
+The Admin interface still includes **Import**.
+
+1. Export your current SmashPool tournament JSON.
+2. Sign into `/admin`.
+3. Click **Import** and select that JSON.
+
+If Firebase Storage is configured, embedded profile pictures from the old JSON are automatically uploaded to Storage during import. If Storage is not configured, the embedded pictures remain in Firestore.
+
+## Important security note
+
+Do not rely on hiding the `/admin` URL for security. The included Firestore and Storage rules enforce access on Firebase's servers. Keep the `admins/{uid}` allow-list restricted to people who should be able to modify the pool.
