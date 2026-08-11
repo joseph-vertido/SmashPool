@@ -1,6 +1,13 @@
-# SmashPool React + Firebase v2.1.6
+# SmashPool React + Firebase v2.1.12
 
 SmashPool is now split into two browser interfaces backed by Firebase:
+
+## v2.1.12 anonymous wager projected payouts
+
+- Expanded public **Anonymous Wagers on This Pair** cards now show both the existing wager amount and its **Projected Payout** if that pair wins at the current pool state.
+- Projected payout uses the current distributable prize pool multiplied by that anonymous bettor's share of all wagers on the selected pair.
+- The calculation is performed in the public browser from data already present in the public dashboard snapshot, so no bettor names or additional private ledger data are exposed.
+
 
 - `/` — **Public Dashboard** (read-only)
 - `/admin` — **Admin Manager** (Firebase Authentication required)

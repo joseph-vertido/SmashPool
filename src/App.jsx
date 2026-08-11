@@ -791,21 +791,30 @@ function AdminLogin({ authError }) {
   </div>;
 }
 
-function PublicBettorBreakdown({ pair }) {
+function PublicBettorBreakdown({ pair, prizePool }) {
   const bettors = Array.isArray(pair?.bettors) ? pair.bettors : [];
+  const pairTotal = Number(pair?.betTotal || 0);
+  const currentPrizePool = Number(prizePool || 0);
   return <div className="public-bettor-breakdown">
     <div className="bettor-breakdown-heading">
       <span>ANONYMOUS WAGERS ON THIS PAIR</span>
-      <strong>{bettors.length} {bettors.length === 1 ? 'bettor' : 'bettors'} • {currency(pair?.betTotal)}</strong>
+      <strong>{bettors.length} {bettors.length === 1 ? 'bettor' : 'bettors'} • {currency(pairTotal)}</strong>
     </div>
     {bettors.length ? <div className="bettor-breakdown-list">
-      {bettors.map((item, index) => <div className="bettor-breakdown-item" key={`anonymous-${index}-${Number(item.amount || 0)}`}>
-        <div className="bettor-breakdown-person">
-          <span className="bettor-breakdown-avatar">{index + 1}</span>
-          <div><strong>Anonymous Bettor {index + 1}</strong>{Number(item.betCount || 0) > 1 && <span>{Number(item.betCount)} bets combined</span>}</div>
-        </div>
-        <strong className="bettor-breakdown-amount">{currency(item.amount)}</strong>
-      </div>)}
+      {bettors.map((item, index) => {
+        const wager = Number(item.amount || 0);
+        const projectedPayout = pairTotal > 0 ? currentPrizePool * (wager / pairTotal) : 0;
+        return <div className="bettor-breakdown-item" key={`anonymous-${index}-${wager}`}>
+          <div className="bettor-breakdown-person">
+            <span className="bettor-breakdown-avatar">{index + 1}</span>
+            <div><strong>Anonymous Bettor {index + 1}</strong>{Number(item.betCount || 0) > 1 && <span>{Number(item.betCount)} bets combined</span>}</div>
+          </div>
+          <div className="bettor-breakdown-values">
+            <div><span>Wager</span><strong className="bettor-breakdown-amount">{currency(wager)}</strong></div>
+            <div><span>Projected payout</span><strong className="bettor-breakdown-payout">{currency(projectedPayout)}</strong></div>
+          </div>
+        </div>;
+      })}
     </div> : <div className="bettor-breakdown-empty">No bets have been placed on this pair yet.</div>}
   </div>;
 }
@@ -872,7 +881,7 @@ function PublicDashboard({ data }) {
                   <td className="multiplier">{pair.projectedReturn5 ? `${Number(pair.projectedReturn5).toFixed(2)}×` : '—'}</td>
                   <td className="money">{pair.fivePays ? currency(pair.fivePays) : '—'}</td>
                 </tr>
-                {expanded && <tr className="bettor-breakdown-row"><td colSpan="7"><PublicBettorBreakdown pair={pair} /></td></tr>}
+                {expanded && <tr className="bettor-breakdown-row"><td colSpan="7"><PublicBettorBreakdown pair={pair} prizePool={data?.prizePool} /></td></tr>}
               </React.Fragment>;
             }) : <tr><td colSpan="7"><div className="empty-state">No pairs have been published yet.</div></td></tr>}</tbody>
           </table></div>
@@ -899,7 +908,7 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-expand-label">{expanded ? 'Hide wager details' : `View ${Number(pair.bettorCount || 0)} anonymous ${Number(pair.bettorCount || 0) === 1 ? 'bettor' : 'bettors'}`}</div>
                 </button>
-                {expanded && <PublicBettorBreakdown pair={pair} />}
+                {expanded && <PublicBettorBreakdown pair={pair} prizePool={data?.prizePool} />}
               </article>;
             }) : <div className="empty-state">No pairs have been published yet.</div>}
           </div>
