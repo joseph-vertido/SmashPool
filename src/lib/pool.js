@@ -16,6 +16,7 @@ export const defaultPairs = [
 export const makeDefaultState = () => ({
   tournamentName: 'Badminton Championship Pool',
   feePercent: 0,
+  cutoffAt: '2026-08-12T02:00:00.000Z',
   bettingOpen: true,
   settledWinnerId: null,
   preSettlementBettingOpen: null,
@@ -52,6 +53,12 @@ export function migrateState(saved) {
   }
   next.zoomFactor = clampZoom(next.zoomFactor);
   next.feePercent = Math.min(25, Math.max(0, Number(next.feePercent || 0)));
+  if (next.cutoffAt) {
+    const cutoff = new Date(next.cutoffAt);
+    next.cutoffAt = Number.isNaN(cutoff.getTime()) ? null : cutoff.toISOString();
+  } else {
+    next.cutoffAt = null;
+  }
   return next;
 }
 
@@ -273,6 +280,7 @@ export function buildPublicDashboard(state) {
   return {
     tournamentName: state.tournamentName,
     feePercent: Number(state.feePercent || 0),
+    cutoffAt: state.cutoffAt || null,
     bettingOpen: Boolean(state.bettingOpen),
     totalPool: total,
     prizePool: prize,

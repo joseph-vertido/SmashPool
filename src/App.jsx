@@ -54,6 +54,42 @@ function publicProjectedPayout(data, pair, amount = 5) {
   return Number.isFinite(payout) ? payout : null;
 }
 
+
+function toDateTimeLocalValue(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = number => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function CutoffCountdown({ cutoffAt }) {
+  const cutoffMs = cutoffAt ? new Date(cutoffAt).getTime() : NaN;
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!Number.isFinite(cutoffMs)) return undefined;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [cutoffMs]);
+
+  if (!Number.isFinite(cutoffMs)) return null;
+  const remainingMs = Math.max(0, cutoffMs - now);
+  if (remainingMs <= 0) return <span className="cutoff-countdown expired">Cutoff reached</span>;
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const text = days > 0
+    ? `${days}d ${hours}h ${minutes}m ${seconds}s remaining`
+    : `${hours}h ${minutes}m ${seconds}s remaining`;
+
+  return <span className="cutoff-countdown">{text}</span>;
+}
+
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   betting: 'Enter Bets',
@@ -111,13 +147,15 @@ function ActionDialog({ dialog, onResult }) {
 function SettingsModal({ open, state, onClose, onSave, onReset }) {
   const [name, setName] = useState(state.tournamentName);
   const [fee, setFee] = useState(state.feePercent);
+  const [cutoff, setCutoff] = useState(toDateTimeLocalValue(state.cutoffAt));
 
   useEffect(() => {
     if (open) {
       setName(state.tournamentName);
       setFee(state.feePercent);
+      setCutoff(toDateTimeLocalValue(state.cutoffAt));
     }
-  }, [open, state.tournamentName, state.feePercent]);
+  }, [open, state.tournamentName, state.feePercent, state.cutoffAt]);
 
   if (!open) return null;
   return (
@@ -131,11 +169,14 @@ function SettingsModal({ open, state, onClose, onSave, onReset }) {
         </div>
         <form onSubmit={event => {
           event.preventDefault();
-          onSave(name.trim() || 'Badminton Championship Pool', Math.min(25, Math.max(0, Number(fee || 0))));
+          const cutoffDate = cutoff ? new Date(cutoff) : null;
+          const cutoffAt = cutoffDate && !Number.isNaN(cutoffDate.getTime()) ? cutoffDate.toISOString() : null;
+          onSave(name.trim() || 'Badminton Championship Pool', Math.min(25, Math.max(0, Number(fee || 0))), cutoffAt);
         }}>
           <label>Tournament Name<input value={name} onChange={event => setName(event.target.value)} maxLength={80} /></label>
           <label>Organizer / Pool Deduction (%)<input value={fee} onChange={event => setFee(event.target.value)} type="number" min="0" max="25" step="0.5" /></label>
-          <div className="callout">The prize pool equals total wagers minus this deduction. Set this to 0% if the organizer is not retaining any portion of the pool.</div>
+          <label>Betting Cutoff Date & Time<input value={cutoff} onChange={event => setCutoff(event.target.value)} type="datetime-local" /></label>
+          <div className="callout">The prize pool equals total wagers minus this deduction. Set this to 0% if the organizer is not retaining any portion of the pool. The cutoff is saved as an absolute time and drives the live countdown shown on the dashboard.</div>
           <div className="modal-actions">
             <button type="button" className="btn ghost" onClick={onReset}>Reset Tournament</button>
             <button type="submit" className="btn primary">Save Settings</button>
@@ -162,7 +203,7 @@ function Dashboard({ state, onView, onToggleBetting }) {
     <>
       <div className="hero card">
         <div className="hero-copy">
-          <div className="tag">LIVE POOL</div>
+          <div className="live-pool-row"><div className="tag">LIVE POOL</div><CutoffCountdown cutoffAt={state.cutoffAt} /></div>
           <h2>{state.tournamentName}</h2>
           <p>Live market activity, dynamic pari-mutuel returns, and proportional payouts—all in one browser dashboard.</p>
           <div className="hero-actions">
@@ -191,7 +232,7 @@ function Dashboard({ state, onView, onToggleBetting }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Changes with every bet</div></div>
           <div className="table-wrap"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead>
             <tbody>
               {marketPairs.length === 0 ? <tr><td colSpan="6"><div className="empty-state">No pairs yet. Add a pair from Pairs & Players.</div></td></tr> : marketPairs.map(pair => {
                 const onPair = totalOnPair(state, pair.id);
@@ -751,7 +792,7 @@ function AdminApp({ user }) {
         </main>
       </div>
 
-      <SettingsModal open={settingsOpen} state={state} onClose={() => setSettingsOpen(false)} onSave={(name, fee) => { updateState(current => ({ ...current, tournamentName: name, feePercent: fee })); setSettingsOpen(false); toast('Pool settings saved'); }} onReset={resetTournament} />
+      <SettingsModal open={settingsOpen} state={state} onClose={() => setSettingsOpen(false)} onSave={(name, fee, cutoffAt) => { updateState(current => ({ ...current, tournamentName: name, feePercent: fee, cutoffAt })); setSettingsOpen(false); toast('Pool settings saved'); }} onReset={resetTournament} />
       <ActionDialog dialog={dialog} onResult={resolveDialog} />
       <div className={`toast ${toastMessage ? 'show' : ''}`}>{toastMessage}</div>
     </>
@@ -855,9 +896,20 @@ function PublicDashboard({ data }) {
     <main className="public-main">
       <div className="hero card public-hero">
         <div className="hero-copy">
-          <div className="tag">LIVE POOL</div>
+          <div className="live-pool-row"><div className="tag">LIVE POOL</div><CutoffCountdown cutoffAt={data?.cutoffAt} /></div>
           <h2>{data?.tournamentName || 'SmashPool Tournament'}</h2>
-          <p>Live pari-mutuel market activity. Projected returns change automatically as wagers are added by the tournament administrator.</p>
+          <div className="event-notice">
+            <p>This private betting event is being held for the <strong>August 11 Monarch of the Court</strong>.</p>
+            <p>Participants may place wagers beginning at a <strong>minimum of $5.00</strong>. All bets and corresponding payments must be received no later than <strong>7:00 PM on August 11</strong>.</p>
+            <div className="event-payment-info">
+              <div className="event-payment-title">Payment Information</div>
+              <div><strong>Venmo:</strong> @Joseph-Vertido</div>
+              <div><strong>Zelle:</strong> (562) 213-8210</div>
+            </div>
+            <p>A percentage of the <strong>total betting pool will be retained by the house</strong>. The remaining prize pool will be distributed proportionally among the bettors who selected the winning pair.</p>
+            <p>Individual payouts will be determined based on the amount wagered by each bettor relative to the total amount wagered on the winning pair.</p>
+            <p className="event-good-luck"><strong>Best of luck to all participants and bettors!</strong></p>
+          </div>
         </div>
         <div className="hero-orbit" aria-hidden="true"><div className="shuttle">◒</div><div className="orbit-ring ring-a" /><div className="orbit-ring ring-b" /></div>
       </div>
@@ -880,7 +932,7 @@ function PublicDashboard({ data }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see wager amounts</div></div>
           <div className="table-wrap public-market-table"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead>
             <tbody>{pairs.length ? pairs.map(pair => {
               const expanded = expandedPairs.has(pair.id);
               return <React.Fragment key={pair.id}>
@@ -910,7 +962,7 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-primary">
                     <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
+                    <div><span>Projected Payout (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-metrics">
                     <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>

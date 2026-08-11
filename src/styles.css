@@ -664,3 +664,32 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-pair-metrics>div:last-child span{margin-bottom:6px}
   .public-pair-metrics>div:last-child strong{color:#d5e7f2}
 }
+
+
+/* v2.1.17: public dashboard private betting event notice */
+.public-hero{min-height:0}
+.public-hero .hero-copy{max-width:790px}
+.public-hero .event-notice{position:relative;z-index:2;max-width:720px;margin-top:2px}
+.public-hero .event-notice p{max-width:none;margin:0 0 10px;color:#8fa6b8;font-size:12px;line-height:1.55}
+.public-hero .event-notice strong{color:#dcecf6;font-weight:800}
+.public-hero .event-payment-info{display:flex;flex-wrap:wrap;align-items:center;gap:7px 18px;margin:12px 0 13px;padding:10px 12px;border:1px solid rgba(94,234,212,.12);border-radius:12px;background:rgba(94,234,212,.035);font-size:12px;color:#a9bfce}
+.public-hero .event-payment-title{width:100%;font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan)}
+.public-hero .event-good-luck{margin-bottom:0!important;color:#cfeeea!important}
+@media(max-width:900px){
+  .public-hero .event-notice{max-width:none}
+}
+@media(max-width:700px){
+  .public-hero .event-notice p{font-size:11px!important;line-height:1.5;margin-bottom:9px}
+  .public-hero .event-payment-info{display:grid;gap:5px;margin:10px 0 11px;padding:9px 10px;font-size:11px}
+  .public-hero .event-payment-title{font-size:9px}
+}
+
+
+/* v2.1.18: admin cutoff setting + live dashboard countdown */
+.live-pool-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cutoff-countdown{display:inline-flex;align-items:center;min-height:25px;padding:5px 9px;border-radius:999px;border:1px solid rgba(34,211,238,.16);background:rgba(34,211,238,.055);color:#a8edf4;font-size:10px;font-weight:800;letter-spacing:.035em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cutoff-countdown.expired{border-color:rgba(251,113,133,.18);background:rgba(251,113,133,.055);color:#fda4af}
+@media(max-width:700px){
+  .public-hero .live-pool-row{gap:7px}
+  .public-hero .cutoff-countdown{min-height:23px;padding:4px 8px;font-size:9px}
+}

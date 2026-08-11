@@ -1,4 +1,10 @@
-# SmashPool React + Firebase v2.1.15
+# SmashPool React + Firebase v2.1.18
+
+## v2.1.18
+- Renamed **Projected Return (On $5 Bet)** to **Projected Payout (On $5 Bet)** across Admin and Public dashboard views.
+- Added a **Betting Cutoff Date & Time** setting under Admin → Pool Settings.
+- Added a live remaining-time countdown beside the **LIVE POOL** pill on both Admin and Public dashboards.
+- Existing tournaments migrate with the August 11, 2026 7:00 PM Pacific cutoff for the Monarch of the Court event; admins can change it at any time.
 
 ## v2.1.15
 - **Projected Return (On $5 Bet)** now displays only the projected dollar payout, e.g. `$10.65`.
@@ -281,3 +287,10 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - The public dashboard no longer depends on optional `projectedReturn5` / `fivePays` fields being present in the Firestore snapshot.
 - This fixes the projected return displaying as an em dash (`—`) when viewing older or not-yet-republished public snapshots.
 - The formula matches the Admin dashboard's prospective $5 wager logic.
+
+
+## v2.1.17 — Private event notice
+
+- Replaced the short public Dashboard market description with the full **August 11 Monarch of the Court** private betting event notice.
+- Added the **$5.00 minimum wager**, **7:00 PM August 11** betting/payment cutoff, Venmo and Zelle payment information, house-retained pool explanation, and proportional payout explanation.
+- Added compact responsive styling for the longer notice and payment block on desktop and mobile.
