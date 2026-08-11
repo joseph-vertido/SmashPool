@@ -187,7 +187,7 @@ function Dashboard({ state, onView, onToggleBetting }) {
                   <td className="money">{currency(onPair)}</td>
                   <td className="bettor-count">{bettorsOnPair(state, pair.id)}</td>
                   <td>{pct(share)}</td>
-                  <td className="multiplier">{fiveDollarProjection ? `${fiveDollarProjection.multiplier.toFixed(2)}× / ${currency(fiveDollarProjection.payout)}` : '—'}</td>
+                  <td className="multiplier">{fiveDollarProjection ? currency(fiveDollarProjection.payout) : '—'}</td>
                 </tr>;
               })}
             </tbody>
@@ -874,7 +874,7 @@ function PublicDashboard({ data }) {
                   <td className="money">{currency(pair.betTotal)}</td>
                   <td className="bettor-count">{Number(pair.bettorCount || 0)}</td>
                   <td>{pct(pair.poolShare)}</td>
-                  <td className="multiplier">{pair.projectedReturn5 && pair.fivePays ? `${Number(pair.projectedReturn5).toFixed(2)}× / ${currency(pair.fivePays)}` : '—'}</td>
+                  <td className="multiplier">{pair.projectedReturn5 && pair.fivePays ? currency(pair.fivePays) : '—'}</td>
                 </tr>
                 {expanded && <tr className="bettor-breakdown-row"><td colSpan="6"><PublicBettorBreakdown pair={pair} prizePool={data?.prizePool} /></td></tr>}
               </React.Fragment>;
@@ -894,7 +894,7 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-primary">
                     <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{pair.projectedReturn5 && pair.fivePays ? `${Number(pair.projectedReturn5).toFixed(2)}× / ${currency(pair.fivePays)}` : '—'}</strong></div>
+                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{pair.projectedReturn5 && pair.fivePays ? currency(pair.fivePays) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-metrics">
                     <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>

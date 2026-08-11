@@ -1,4 +1,8 @@
-# SmashPool React + Firebase v2.1.14
+# SmashPool React + Firebase v2.1.15
+
+## v2.1.15
+- **Projected Return (On $5 Bet)** now displays only the projected dollar payout, e.g. `$10.65`.
+- Removed the `×` multiplier from the Projected Return display on both Admin and Public dashboards.
 
 ### v2.1.14
 
