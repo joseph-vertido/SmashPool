@@ -655,3 +655,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-dashboard .bettor-breakdown-item.wager-only .bettor-breakdown-values{width:100%;justify-content:space-between}
   .public-dashboard .bettor-breakdown-combined{font-size:11px}
 }
+
+/* v2.1.14: combined projected return display and two-column mobile metrics */
+@media(max-width:760px){
+  .public-pair-primary .multiplier{white-space:normal;overflow-wrap:anywhere}
+  .public-pair-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .public-pair-metrics>div:last-child{grid-column:auto;display:block;background:rgba(255,255,255,.018);border-color:rgba(161,193,219,.06)}
+  .public-pair-metrics>div:last-child span{margin-bottom:6px}
+  .public-pair-metrics>div:last-child strong{color:#d5e7f2}
+}

@@ -175,9 +175,9 @@ function Dashboard({ state, onView, onToggleBetting }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Changes with every bet</div></div>
           <div className="table-wrap"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return ($5)</th><th>$5 Pays</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
             <tbody>
-              {marketPairs.length === 0 ? <tr><td colSpan="7"><div className="empty-state">No pairs yet. Add a pair from Pairs & Players.</div></td></tr> : marketPairs.map(pair => {
+              {marketPairs.length === 0 ? <tr><td colSpan="6"><div className="empty-state">No pairs yet. Add a pair from Pairs & Players.</div></td></tr> : marketPairs.map(pair => {
                 const onPair = totalOnPair(state, pair.id);
                 const share = total ? onPair / total * 100 : 0;
                 const fiveDollarProjection = projectedBet(state, pair.id, 5);
@@ -187,8 +187,7 @@ function Dashboard({ state, onView, onToggleBetting }) {
                   <td className="money">{currency(onPair)}</td>
                   <td className="bettor-count">{bettorsOnPair(state, pair.id)}</td>
                   <td>{pct(share)}</td>
-                  <td className="multiplier">{fiveDollarProjection ? `${fiveDollarProjection.multiplier.toFixed(2)}×` : '—'}</td>
-                  <td className="money">{fiveDollarProjection ? currency(fiveDollarProjection.payout) : '—'}</td>
+                  <td className="multiplier">{fiveDollarProjection ? `${fiveDollarProjection.multiplier.toFixed(2)}× / ${currency(fiveDollarProjection.payout)}` : '—'}</td>
                 </tr>;
               })}
             </tbody>
@@ -865,7 +864,7 @@ function PublicDashboard({ data }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see wager amounts</div></div>
           <div className="table-wrap public-market-table"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return ($5)</th><th>$5 Pays</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
             <tbody>{pairs.length ? pairs.map(pair => {
               const expanded = expandedPairs.has(pair.id);
               return <React.Fragment key={pair.id}>
@@ -875,12 +874,11 @@ function PublicDashboard({ data }) {
                   <td className="money">{currency(pair.betTotal)}</td>
                   <td className="bettor-count">{Number(pair.bettorCount || 0)}</td>
                   <td>{pct(pair.poolShare)}</td>
-                  <td className="multiplier">{pair.projectedReturn5 ? `${Number(pair.projectedReturn5).toFixed(2)}×` : '—'}</td>
-                  <td className="money">{pair.fivePays ? currency(pair.fivePays) : '—'}</td>
+                  <td className="multiplier">{pair.projectedReturn5 && pair.fivePays ? `${Number(pair.projectedReturn5).toFixed(2)}× / ${currency(pair.fivePays)}` : '—'}</td>
                 </tr>
-                {expanded && <tr className="bettor-breakdown-row"><td colSpan="7"><PublicBettorBreakdown pair={pair} prizePool={data?.prizePool} /></td></tr>}
+                {expanded && <tr className="bettor-breakdown-row"><td colSpan="6"><PublicBettorBreakdown pair={pair} prizePool={data?.prizePool} /></td></tr>}
               </React.Fragment>;
-            }) : <tr><td colSpan="7"><div className="empty-state">No pairs have been published yet.</div></td></tr>}</tbody>
+            }) : <tr><td colSpan="6"><div className="empty-state">No pairs have been published yet.</div></td></tr>}</tbody>
           </table></div>
           <div className="public-market-cards">
             {pairs.length ? pairs.map(pair => {
@@ -896,12 +894,11 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-primary">
                     <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected return ($5)</span><strong className="multiplier">{pair.projectedReturn5 ? `${Number(pair.projectedReturn5).toFixed(2)}×` : '—'}</strong></div>
+                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{pair.projectedReturn5 && pair.fivePays ? `${Number(pair.projectedReturn5).toFixed(2)}× / ${currency(pair.fivePays)}` : '—'}</strong></div>
                   </div>
                   <div className="public-pair-metrics">
                     <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
                     <div><span>Pool share</span><strong>{pct(pair.poolShare)}</strong></div>
-                    <div><span>$5 pays</span><strong className="money">{pair.fivePays ? currency(pair.fivePays) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-expand-label">{expanded ? 'Hide wager details' : `View ${Number(pair.bettorCount || 0)} anonymous ${Number(pair.bettorCount || 0) === 1 ? 'bettor' : 'bettors'}`}</div>
                 </button>
