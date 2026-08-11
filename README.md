@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.1
+# SmashPool React + Firebase v2.1.3
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -8,7 +8,13 @@ SmashPool is now split into two browser interfaces backed by Firebase:
 The administrator manages pairs, profile photos, bets, pool settings, settlement, imports, and exports. Each admin change is saved to Firestore and a sanitized dashboard snapshot is published for public viewers in real time.
 
 
-## v2.1.1 mobile public dashboard
+## v2.1.3 public bettor breakdown
+
+The public Projected Returns section now lets viewers expand any pair to see the people who have bet on that pair and the total amount wagered by each person. Repeat bets from the same bettor on the same pair are combined into one total, with the number of combined bet entries shown. The breakdown is collapsed by default and works in both the desktop table and mobile pair-card layouts.
+
+**Privacy note:** bettor names and per-pair wager totals are now intentionally included in the public Firestore dashboard document (`publicPools/<POOL_ID>`) so they can be displayed to unauthenticated viewers.
+
+## v2.1.2 mobile public dashboard
 
 The public `/` dashboard now has a dedicated responsive layout for mobile browsers:
 
@@ -188,3 +194,8 @@ If Firebase Storage is configured, embedded profile pictures from the old JSON a
 ## Important security note
 
 Do not rely on hiding the `/admin` URL for security. The included Firestore and Storage rules enforce access on Firebase's servers. Keep the `admins/{uid}` allow-list restricted to people who should be able to modify the pool.
+
+
+## v2.1.2 mobile readability
+
+The public dashboard now uses larger mobile typography for hero copy, summary cards, pair names, metric labels, projected-return values, and recent bet activity. The desktop/admin layouts remain unchanged.

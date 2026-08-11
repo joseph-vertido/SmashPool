@@ -193,8 +193,21 @@ export function buildPublicDashboard(state) {
   const prize = prizePool(state);
   const originalOrder = new Map(state.pairs.map((pair, index) => [pair.id, index]));
   const pairs = state.pairs.map(pair => {
-    const betTotal = totalOnPair(state, pair.id);
+    const pairBets = state.bets.filter(bet => bet.pairId === pair.id);
+    const betTotal = pairBets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
     const multiplier = pairMultiplier(state, pair.id);
+    const bettorMap = new Map();
+    pairBets.forEach(bet => {
+      const displayName = String(bet.bettor || '').trim() || 'Anonymous';
+      const key = displayName.toLowerCase();
+      const existing = bettorMap.get(key) || { bettor: displayName, amount: 0, betCount: 0 };
+      existing.amount += Number(bet.amount || 0);
+      existing.betCount += 1;
+      bettorMap.set(key, existing);
+    });
+    const bettors = Array.from(bettorMap.values())
+      .sort((a, b) => (b.amount - a.amount) || a.bettor.localeCompare(b.bettor));
+
     return {
       id: pair.id,
       group: pair.group,
@@ -203,7 +216,8 @@ export function buildPublicDashboard(state) {
       player1Photo: pair.player1Photo || null,
       player2Photo: pair.player2Photo || null,
       betTotal,
-      bettorCount: bettorsOnPair(state, pair.id),
+      bettorCount: bettors.length,
+      bettors,
       poolShare: total ? betTotal / total * 100 : 0,
       multiplier: multiplier || null,
       twentyPays: multiplier ? 20 * multiplier : null

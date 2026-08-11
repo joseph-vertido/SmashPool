@@ -784,10 +784,39 @@ function AdminLogin({ authError }) {
   </div>;
 }
 
+function PublicBettorBreakdown({ pair }) {
+  const bettors = Array.isArray(pair?.bettors) ? pair.bettors : [];
+  return <div className="public-bettor-breakdown">
+    <div className="bettor-breakdown-heading">
+      <span>BETTORS ON THIS PAIR</span>
+      <strong>{bettors.length} {bettors.length === 1 ? 'person' : 'people'} • {currency(pair?.betTotal)}</strong>
+    </div>
+    {bettors.length ? <div className="bettor-breakdown-list">
+      {bettors.map((item, index) => <div className="bettor-breakdown-item" key={`${String(item.bettor).toLowerCase()}-${index}`}>
+        <div className="bettor-breakdown-person">
+          <span className="bettor-breakdown-avatar">{playerInitials(item.bettor)}</span>
+          <div><strong>{item.bettor}</strong>{Number(item.betCount || 0) > 1 && <span>{Number(item.betCount)} bets combined</span>}</div>
+        </div>
+        <strong className="bettor-breakdown-amount">{currency(item.amount)}</strong>
+      </div>)}
+    </div> : <div className="bettor-breakdown-empty">No bets have been placed on this pair yet.</div>}
+  </div>;
+}
+
 function PublicDashboard({ data }) {
   const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
   const recent = Array.isArray(data?.recentBets) ? data.recentBets : [];
   const leader = pairs.find(pair => pair.id === data?.mostBetOnPairId) || null;
+  const [expandedPairs, setExpandedPairs] = useState(() => new Set());
+
+  const togglePair = pairId => {
+    setExpandedPairs(current => {
+      const next = new Set(current);
+      if (next.has(pairId)) next.delete(pairId);
+      else next.add(pairId);
+      return next;
+    });
+  };
 
   return <div className="public-dashboard">
     <header className="public-topbar">
@@ -821,35 +850,48 @@ function PublicDashboard({ data }) {
 
       <div className="dashboard-grid">
         <section className="card panel wide-panel">
-          <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Updates in real time</div></div>
+          <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see bettors</div></div>
           <div className="table-wrap public-market-table"><table>
             <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return</th><th>$20 Pays</th></tr></thead>
-            <tbody>{pairs.length ? pairs.map(pair => <tr key={pair.id}>
-              <td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><div><strong>{pairName(pair)}</strong><span>{pair.player1} + {pair.player2}</span></div></div></td>
-              <td><GroupBadge group={pair.group} /></td>
-              <td className="money">{currency(pair.betTotal)}</td>
-              <td className="bettor-count">{Number(pair.bettorCount || 0)}</td>
-              <td>{pct(pair.poolShare)}</td>
-              <td className="multiplier">{pair.multiplier ? `${Number(pair.multiplier).toFixed(2)}×` : '—'}</td>
-              <td className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</td>
-            </tr>) : <tr><td colSpan="7"><div className="empty-state">No pairs have been published yet.</div></td></tr>}</tbody>
+            <tbody>{pairs.length ? pairs.map(pair => {
+              const expanded = expandedPairs.has(pair.id);
+              return <React.Fragment key={pair.id}>
+                <tr className={`expandable-market-row ${expanded ? 'expanded' : ''}`} onClick={() => togglePair(pair.id)} aria-expanded={expanded}>
+                  <td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><div><strong>{pairName(pair)}</strong><span>{pair.player1} + {pair.player2}</span></div><span className="pair-expand-chevron" aria-hidden="true">⌄</span></div></td>
+                  <td><GroupBadge group={pair.group} /></td>
+                  <td className="money">{currency(pair.betTotal)}</td>
+                  <td className="bettor-count">{Number(pair.bettorCount || 0)}</td>
+                  <td>{pct(pair.poolShare)}</td>
+                  <td className="multiplier">{pair.multiplier ? `${Number(pair.multiplier).toFixed(2)}×` : '—'}</td>
+                  <td className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</td>
+                </tr>
+                {expanded && <tr className="bettor-breakdown-row"><td colSpan="7"><PublicBettorBreakdown pair={pair} /></td></tr>}
+              </React.Fragment>;
+            }) : <tr><td colSpan="7"><div className="empty-state">No pairs have been published yet.</div></td></tr>}</tbody>
           </table></div>
           <div className="public-market-cards">
-            {pairs.length ? pairs.map(pair => <article className="public-pair-card" key={pair.id}>
-              <div className="public-pair-card-head">
-                <div className="pair-identity"><PairAvatars pair={pair} className="mobile-market-avatars" /><div className="public-pair-names"><strong>{pairName(pair)}</strong><span>{pair.player1} + {pair.player2}</span></div></div>
-                <GroupBadge group={pair.group} />
-              </div>
-              <div className="public-pair-primary">
-                <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                <div><span>Projected return</span><strong className="multiplier">{pair.multiplier ? `${Number(pair.multiplier).toFixed(2)}×` : '—'}</strong></div>
-              </div>
-              <div className="public-pair-metrics">
-                <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
-                <div><span>Pool share</span><strong>{pct(pair.poolShare)}</strong></div>
-                <div><span>$20 pays</span><strong className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</strong></div>
-              </div>
-            </article>) : <div className="empty-state">No pairs have been published yet.</div>}
+            {pairs.length ? pairs.map(pair => {
+              const expanded = expandedPairs.has(pair.id);
+              return <article className={`public-pair-card ${expanded ? 'expanded' : ''}`} key={pair.id}>
+                <button className="public-pair-card-toggle" type="button" onClick={() => togglePair(pair.id)} aria-expanded={expanded}>
+                  <div className="public-pair-card-head">
+                    <div className="pair-identity"><PairAvatars pair={pair} className="mobile-market-avatars" /><div className="public-pair-names"><strong>{pairName(pair)}</strong><span>{pair.player1} + {pair.player2}</span></div></div>
+                    <div className="public-pair-head-right"><GroupBadge group={pair.group} /><span className="pair-expand-chevron" aria-hidden="true">⌄</span></div>
+                  </div>
+                  <div className="public-pair-primary">
+                    <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
+                    <div><span>Projected return</span><strong className="multiplier">{pair.multiplier ? `${Number(pair.multiplier).toFixed(2)}×` : '—'}</strong></div>
+                  </div>
+                  <div className="public-pair-metrics">
+                    <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
+                    <div><span>Pool share</span><strong>{pct(pair.poolShare)}</strong></div>
+                    <div><span>$20 pays</span><strong className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</strong></div>
+                  </div>
+                  <div className="public-pair-expand-label">{expanded ? 'Hide bettors' : `View ${Number(pair.bettorCount || 0)} ${Number(pair.bettorCount || 0) === 1 ? 'bettor' : 'bettors'}`}</div>
+                </button>
+                {expanded && <PublicBettorBreakdown pair={pair} />}
+              </article>;
+            }) : <div className="empty-state">No pairs have been published yet.</div>}
           </div>
         </section>
 
