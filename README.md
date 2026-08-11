@@ -274,3 +274,10 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - Reduced public mobile typography slightly for a more balanced phone layout.
 - Left-aligned **Projected Return ($5)** label and value in mobile Projected Returns cards.
 - Kept Admin styling and Firebase data structure unchanged.
+
+## v2.1.16 — Public projected-return reliability fix
+
+- Public **Projected Return (On $5 Bet)** is now calculated live from the published total pool, house percentage, and pair wager total.
+- The public dashboard no longer depends on optional `projectedReturn5` / `fivePays` fields being present in the Firestore snapshot.
+- This fixes the projected return displaying as an em dash (`—`) when viewing older or not-yet-republished public snapshots.
+- The formula matches the Admin dashboard's prospective $5 wager logic.

@@ -38,6 +38,22 @@ import {
   uploadProfilePhoto
 } from './lib/firebase.js';
 
+function publicProjectedPayout(data, pair, amount = 5) {
+  const wager = Number(amount || 0);
+  if (wager <= 0) return null;
+
+  const currentPool = Number(data?.totalPool || 0);
+  const currentPairTotal = Number(pair?.betTotal || 0);
+  const feePercent = Math.min(100, Math.max(0, Number(data?.feePercent || 0)));
+  const nextTotalPool = currentPool + wager;
+  const nextPairTotal = currentPairTotal + wager;
+  if (nextTotalPool <= 0 || nextPairTotal <= 0) return null;
+
+  const nextPrizePool = nextTotalPool * (1 - feePercent / 100);
+  const payout = nextPrizePool * (wager / nextPairTotal);
+  return Number.isFinite(payout) ? payout : null;
+}
+
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   betting: 'Enter Bets',
@@ -874,7 +890,7 @@ function PublicDashboard({ data }) {
                   <td className="money">{currency(pair.betTotal)}</td>
                   <td className="bettor-count">{Number(pair.bettorCount || 0)}</td>
                   <td>{pct(pair.poolShare)}</td>
-                  <td className="multiplier">{pair.projectedReturn5 && pair.fivePays ? currency(pair.fivePays) : '—'}</td>
+                  <td className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</td>
                 </tr>
                 {expanded && <tr className="bettor-breakdown-row"><td colSpan="6"><PublicBettorBreakdown pair={pair} prizePool={data?.prizePool} /></td></tr>}
               </React.Fragment>;
@@ -894,7 +910,7 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-primary">
                     <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{pair.projectedReturn5 && pair.fivePays ? currency(pair.fivePays) : '—'}</strong></div>
+                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-metrics">
                     <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
