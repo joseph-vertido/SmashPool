@@ -428,11 +428,15 @@ function Pairs({ state, updateState, toast, showConfirm, showNotice }) {
 }
 
 function Ledger({ state, updateState, toast, showConfirm }) {
-  const [query, setQuery] = useState('');
+  const [bettorQuery, setBettorQuery] = useState('');
+  const [playerQuery, setPlayerQuery] = useState('');
   const rows = state.bets.slice().reverse().filter(bet => {
-    const q = query.trim().toLowerCase();
+    const bettorQ = bettorQuery.trim().toLowerCase();
+    const playerQ = playerQuery.trim().toLowerCase();
     const pair = state.pairs.find(item => item.id === bet.pairId);
-    return !q || bet.bettor.toLowerCase().includes(q) || pairName(pair).toLowerCase().includes(q);
+    const bettorMatches = !bettorQ || bet.bettor.toLowerCase().includes(bettorQ);
+    const playerMatches = !playerQ || pairName(pair).toLowerCase().includes(playerQ);
+    return bettorMatches && playerMatches;
   });
 
   async function deleteBet(betId) {
@@ -455,7 +459,7 @@ function Ledger({ state, updateState, toast, showConfirm }) {
   }
 
   return <section className="card panel">
-    <div className="panel-header"><div><div className="eyebrow">AUDIT TRAIL</div><h3>Bet Ledger</h3></div><div className="inline-actions"><input className="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search bettor or pair" /><button className="btn danger subtle" onClick={clearBets}>Clear Bets</button></div></div>
+    <div className="panel-header"><div><div className="eyebrow">AUDIT TRAIL</div><h3>Bet Ledger</h3></div><div className="inline-actions ledger-filters"><input className="search" value={bettorQuery} onChange={event => setBettorQuery(event.target.value)} placeholder="Search Bettor" aria-label="Search Bettor" /><input className="search" value={playerQuery} onChange={event => setPlayerQuery(event.target.value)} placeholder="Search Player" aria-label="Search Player" /><button className="btn danger subtle" onClick={clearBets}>Clear Bets</button></div></div>
     <div className="table-wrap"><table><thead><tr><th>Time</th><th>Bettor</th><th>Pair</th><th>Group</th><th>Amount</th><th></th></tr></thead><tbody>
       {rows.length ? rows.map(bet => {
         const pair = state.pairs.find(item => item.id === bet.pairId);
@@ -529,6 +533,7 @@ function AdminApp({ user }) {
   const [hydrated, setHydrated] = useState(false);
   const [view, setView] = useState('dashboard');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [dialog, setDialog] = useState(null);
   const dialogResolver = useRef(null);
@@ -691,8 +696,8 @@ function AdminApp({ user }) {
   return (
     <>
       <div className="app-shell">
-        <aside className="sidebar">
-          <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Manager</div></div></div>
+        <aside className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
+          <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Manager</div></div><button type="button" className="mobile-sidebar-close" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>×</button></div>
           <nav className="nav" aria-label="Main navigation">
             {[
               ['dashboard','⌂','Dashboard'],
@@ -700,14 +705,15 @@ function AdminApp({ user }) {
               ['pairs','♟','Pairs & Players'],
               ['bets','≡','Bet Ledger'],
               ['settlement','✓','Settlement']
-            ].map(([id, icon, label]) => <button className={`nav-item ${view === id ? 'active' : ''}`} key={id} onClick={() => setView(id)}><span>{icon}</span>{label}</button>)}
+            ].map(([id, icon, label]) => <button className={`nav-item ${view === id ? 'active' : ''}`} key={id} onClick={() => { setView(id); setMobileNavOpen(false); }}><span>{icon}</span>{label}</button>)}
           </nav>
           <div className="sidebar-footer"><div className="status-chip"><span className={`status-dot ${state.bettingOpen ? '' : 'closed-dot'}`} /><span>{state.bettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div><div className="local-note">Firebase Admin<br />{user?.email || 'Authenticated'}</div></div>
         </aside>
+        <button type="button" className={`mobile-nav-backdrop ${mobileNavOpen ? 'show' : ''}`} aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />
 
         <main className="main">
           <header className="topbar">
-            <div><div className="eyebrow">TOURNAMENT POOL</div><h1>{PAGE_TITLES[view]}</h1></div>
+            <div className="topbar-title-wrap"><button type="button" className="mobile-nav-toggle" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}>☰</button><div><div className="eyebrow">TOURNAMENT POOL</div><h1>{PAGE_TITLES[view]}</h1></div></div>
             <div className="top-actions">
               <div className="zoom-control" aria-label="Interface zoom controls"><button type="button" className="zoom-btn" disabled={state.zoomFactor <= MIN_ZOOM} onClick={() => changeZoom(-ZOOM_STEP)}>−</button><button type="button" className="zoom-value" onClick={() => setZoom(1)}>{Math.round(state.zoomFactor * 100)}%</button><button type="button" className="zoom-btn" disabled={state.zoomFactor >= MAX_ZOOM} onClick={() => changeZoom(ZOOM_STEP)}>+</button></div>
               <input ref={importRef} className="hidden" type="file" accept="application/json,.json" onChange={importTournament} />

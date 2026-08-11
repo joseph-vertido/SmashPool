@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.5
+# SmashPool React + Firebase v2.1.6
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -8,11 +8,20 @@ SmashPool is now split into two browser interfaces backed by Firebase:
 The administrator manages pairs, profile photos, bets, pool settings, settlement, imports, and exports. Each admin change is saved to Firestore and a sanitized dashboard snapshot is published for public viewers in real time.
 
 
+## v2.1.6 mobile usability
+
+- Admin `/admin` now uses a hamburger button and slide-out navigation drawer on screens 700px wide and below.
+- The drawer includes all Admin sections, betting status, and authenticated-user details, and closes automatically after navigation.
+- Admin header actions are horizontally scrollable on narrow phones instead of being squeezed off-screen.
+- Public **Projected Returns** mobile cards now use substantially larger pair names, player names, metric labels, wager totals, multipliers, payout amounts, and anonymous wager-breakdown text.
+- The `$20 Pays` metric receives a full-width row on mobile to improve legibility.
+
+
 ## v2.1.3 public bettor breakdown
 
 The public Projected Returns section now lets viewers expand any pair to see the people who have bet on that pair and the total amount wagered by each person. Repeat bets from the same bettor on the same pair are combined into one total, with the number of combined bet entries shown. The breakdown is collapsed by default and works in both the desktop table and mobile pair-card layouts.
 
-**Privacy note:** bettor names and per-pair wager totals are now intentionally included in the public Firestore dashboard document (`publicPools/<POOL_ID>`) so they can be displayed to unauthenticated viewers.
+**Historical note:** v2.1.3 originally exposed bettor names in the public snapshot. This was superseded by v2.1.4; current builds publish only anonymous bettor summaries and keep real bettor names admin-only.
 
 ## v2.1.2 mobile public dashboard
 
@@ -210,3 +219,8 @@ The public dashboard now uses larger mobile typography for hero copy, summary ca
 ## v2.1.5 mobile readability
 
 The public dashboard now uses a high-legibility phone typography scale. On screens up to 760px, body/supporting text is substantially larger, primary values and pair names are enlarged, and the narrow-phone breakpoint no longer shrinks text below comfortable reading sizes. Admin styling is unchanged.
+
+
+## v2.1.7 Bet Ledger search
+
+The Admin Bet Ledger now has two independent filters: **Search Bettor** and **Search Player**. The filters can be used separately or together; when both are populated, a bet must match both filters to appear.
