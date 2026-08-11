@@ -822,7 +822,7 @@ function PublicDashboard({ data }) {
       <div className="dashboard-grid">
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Updates in real time</div></div>
-          <div className="table-wrap"><table>
+          <div className="table-wrap public-market-table"><table>
             <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return</th><th>$20 Pays</th></tr></thead>
             <tbody>{pairs.length ? pairs.map(pair => <tr key={pair.id}>
               <td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><div><strong>{pairName(pair)}</strong><span>{pair.player1} + {pair.player2}</span></div></div></td>
@@ -834,6 +834,23 @@ function PublicDashboard({ data }) {
               <td className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</td>
             </tr>) : <tr><td colSpan="7"><div className="empty-state">No pairs have been published yet.</div></td></tr>}</tbody>
           </table></div>
+          <div className="public-market-cards">
+            {pairs.length ? pairs.map(pair => <article className="public-pair-card" key={pair.id}>
+              <div className="public-pair-card-head">
+                <div className="pair-identity"><PairAvatars pair={pair} className="mobile-market-avatars" /><div className="public-pair-names"><strong>{pairName(pair)}</strong><span>{pair.player1} + {pair.player2}</span></div></div>
+                <GroupBadge group={pair.group} />
+              </div>
+              <div className="public-pair-primary">
+                <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
+                <div><span>Projected return</span><strong className="multiplier">{pair.multiplier ? `${Number(pair.multiplier).toFixed(2)}×` : '—'}</strong></div>
+              </div>
+              <div className="public-pair-metrics">
+                <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
+                <div><span>Pool share</span><strong>{pct(pair.poolShare)}</strong></div>
+                <div><span>$20 pays</span><strong className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</strong></div>
+              </div>
+            </article>) : <div className="empty-state">No pairs have been published yet.</div>}
+          </div>
         </section>
 
         <section className="card panel activity-panel">

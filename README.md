@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.0
+# SmashPool React + Firebase v2.1.1
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -6,6 +6,18 @@ SmashPool is now split into two browser interfaces backed by Firebase:
 - `/admin` — **Admin Manager** (Firebase Authentication required)
 
 The administrator manages pairs, profile photos, bets, pool settings, settlement, imports, and exports. Each admin change is saved to Firestore and a sanitized dashboard snapshot is published for public viewers in real time.
+
+
+## v2.1.1 mobile public dashboard
+
+The public `/` dashboard now has a dedicated responsive layout for mobile browsers:
+
+- Compact sticky live-status header.
+- Two-column summary cards on phones, with Most Bet-On Pair spanning the full width.
+- Projected Returns switches from the desktop table to touch-friendly pair cards below 760px.
+- Each mobile pair card shows profile photos, group, amount wagered, bettor count, pool share, projected return, and the current $20 payout.
+- Bet Activity remains visible and is optimized for narrow screens.
+- The `/admin` interface and Firebase data model are unchanged.
 
 ## Firebase project
 
@@ -116,18 +128,11 @@ npm run build
 firebase deploy --only hosting
 ```
 
-If you enabled Firebase Storage, you can deploy everything together:
+Or deploy Hosting + Firestore rules + Storage rules together:
 
 ```bash
 npm run build
 firebase deploy
-```
-
-If you are **not** using Firebase Storage, deploy only Hosting and Firestore rules:
-
-```bash
-npm run build
-firebase deploy --only hosting,firestore:rules
 ```
 
 The build can also be hosted on Vercel or Netlify. SPA rewrites are included for both.
