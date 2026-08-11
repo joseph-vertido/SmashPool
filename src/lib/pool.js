@@ -95,6 +95,33 @@ export function pairMultiplier(state, pairId, prospectiveAmount = 0) {
   return (nextPool * (1 - Number(state.feePercent || 0) / 100)) / nextPair;
 }
 
+// Projects the result of placing a NEW wager right now. The calculation is
+// deliberately share-based: the hypothetical wager is first added to both
+// the total pool and the selected pair's pool, then that wager's percentage
+// share of the winning pair is applied to the hypothetical prize pool.
+export function projectedBet(state, pairId, amount = 5) {
+  const wager = Number(amount || 0);
+  if (wager <= 0) return null;
+
+  const nextTotalPool = totalPool(state) + wager;
+  const nextPairTotal = totalOnPair(state, pairId) + wager;
+  if (nextTotalPool <= 0 || nextPairTotal <= 0) return null;
+
+  const nextPrizePool = nextTotalPool * (1 - Number(state.feePercent || 0) / 100);
+  const winningShare = wager / nextPairTotal;
+  const payout = nextPrizePool * winningShare;
+
+  return {
+    wager,
+    totalPool: nextTotalPool,
+    prizePool: nextPrizePool,
+    pairTotal: nextPairTotal,
+    winningShare,
+    payout,
+    multiplier: payout / wager
+  };
+}
+
 export function calculateSettlement(state, pairId) {
   const winnerBets = state.bets.filter(bet => bet.pairId === pairId);
   const winnerTotal = winnerBets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
@@ -195,7 +222,7 @@ export function buildPublicDashboard(state) {
   const pairs = state.pairs.map(pair => {
     const pairBets = state.bets.filter(bet => bet.pairId === pair.id);
     const betTotal = pairBets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
-    const multiplier = pairMultiplier(state, pair.id);
+    const fiveDollarProjection = projectedBet(state, pair.id, 5);
     const bettorMap = new Map();
     pairBets.forEach(bet => {
       const displayName = String(bet.bettor || '').trim() || 'Anonymous';
@@ -222,8 +249,8 @@ export function buildPublicDashboard(state) {
       bettorCount: bettors.length,
       bettors,
       poolShare: total ? betTotal / total * 100 : 0,
-      multiplier: multiplier || null,
-      twentyPays: multiplier ? 20 * multiplier : null
+      projectedReturn5: fiveDollarProjection?.multiplier || null,
+      fivePays: fiveDollarProjection?.payout || null
     };
   }).sort((a, b) => (b.betTotal - a.betTotal) || (originalOrder.get(a.id) - originalOrder.get(b.id)));
 

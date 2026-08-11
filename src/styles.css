@@ -287,6 +287,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .bettor-breakdown-empty{padding:9px 0 2px;color:#6d8394;font-size:11px}
 .public-pair-card-toggle{display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer}
 .public-pair-head-right{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.public-pair-group-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .public-pair-card .pair-expand-chevron{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.035);color:#7590a4;font-size:17px;line-height:1;transition:transform .18s ease,color .18s ease,background .18s ease}
 .public-pair-card.expanded .pair-expand-chevron{transform:rotate(180deg);color:var(--cyan);background:rgba(34,211,238,.08)}
 .public-pair-expand-label{display:none}
@@ -487,11 +488,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   .public-market-cards{gap:15px}
   .public-pair-card{padding:19px 17px;border-radius:20px;border-color:rgba(161,193,219,.13)}
-  .public-pair-card-head{gap:12px;padding-bottom:17px}
-  .public-pair-card-head .pair-identity{gap:12px}
+  .public-pair-card-head{display:block;gap:0;padding-bottom:12px;border-bottom:0}
+  .public-pair-card-head .pair-identity{gap:12px;width:100%;min-width:0}
+  .public-pair-names{flex:1 1 auto;min-width:0}
+  .public-pair-group-row{padding:0 0 14px;border-bottom:1px solid rgba(161,193,219,.07)}
   .pair-avatars.mobile-market-avatars .player-avatar{width:64px;height:64px}
   .pair-avatars.mobile-market-avatars .player-avatar + .player-avatar{margin-left:-15px}
-  .public-pair-names strong{font-size:21px;line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
+  .public-pair-names strong{font-size:21px;line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
   .public-pair-names span{font-size:16px;line-height:1.4;margin-top:5px;white-space:normal;overflow:visible;text-overflow:clip}
   .public-pair-card .group-badge{font-size:13px;line-height:1;padding:7px 10px}
   .public-pair-card .pair-expand-chevron{width:34px;height:34px;font-size:22px}
@@ -499,15 +502,15 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-pair-primary{gap:10px;padding:17px 0 15px}
   .public-pair-primary>div{padding:13px 12px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(161,193,219,.07)}
   .public-pair-primary span,.public-pair-metrics span{font-size:15px;line-height:1.25;letter-spacing:.025em;text-transform:none;margin-bottom:7px;font-weight:650}
-  .public-pair-primary strong{font-size:30px;line-height:1.08}
-  .public-pair-primary .multiplier{font-size:34px;line-height:1.05}
+  .public-pair-primary strong{font-size:21px;line-height:1.2}
+  .public-pair-primary .multiplier{font-size:21px;line-height:1.2}
 
   .public-pair-metrics{grid-template-columns:1fr 1fr;gap:10px;padding-top:14px}
   .public-pair-metrics>div{padding:11px 12px;border-radius:13px;background:rgba(255,255,255,.018);border:1px solid rgba(161,193,219,.06);text-align:left!important}
   .public-pair-metrics>div:last-child{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left!important;background:rgba(34,211,238,.035);border-color:rgba(34,211,238,.1)}
   .public-pair-metrics>div:last-child span{margin:0}
   .public-pair-metrics strong{font-size:21px;line-height:1.2}
-  .public-pair-metrics>div:last-child strong{font-size:25px;color:#e9ffff}
+  .public-pair-metrics>div:last-child strong{font-size:21px;color:#e9ffff}
   .public-pair-expand-label{font-size:16px!important;line-height:1.4;margin-top:14px!important;padding-top:14px!important;min-height:42px}
 
   .public-pair-card>.public-bettor-breakdown{margin:16px -17px -19px;padding:18px 17px 19px}
@@ -530,10 +533,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-pair-names strong{font-size:20px}
   .public-pair-names span{font-size:15px}
   .public-pair-primary span,.public-pair-metrics span{font-size:14px}
-  .public-pair-primary strong{font-size:28px}
-  .public-pair-primary .multiplier{font-size:32px}
+  .public-pair-primary strong{font-size:20px}
+  .public-pair-primary .multiplier{font-size:20px}
   .public-pair-metrics strong{font-size:20px}
-  .public-pair-metrics>div:last-child strong{font-size:24px}
+  .public-pair-metrics>div:last-child strong{font-size:20px}
   .public-pair-expand-label{font-size:16px!important}
   .public-pair-card>.public-bettor-breakdown{margin-left:-14px;margin-right:-14px;margin-bottom:-17px;padding-left:14px;padding-right:14px}
 }

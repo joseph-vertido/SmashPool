@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.6
+# SmashPool React + Firebase v2.1.10
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -224,3 +224,24 @@ The public dashboard now uses a high-legibility phone typography scale. On scree
 ## v2.1.7 Bet Ledger search
 
 The Admin Bet Ledger now has two independent filters: **Search Bettor** and **Search Player**. The filters can be used separately or together; when both are populated, a bet must match both filters to appear.
+
+
+## v2.1.10 dashboard refinements
+
+- Removed the duplicated smaller player-name line from Projected Returns on both Admin and Public dashboards.
+- On the public mobile dashboard, Bet on Pair, Projected Return, and $20 Pays values now use the same text size as Bettors and Pool Share for a more balanced layout.
+
+## v2.1.10 — Prospective $5 return calculation
+
+Dashboard payout projections now answer the question: **“What happens if I place a new $5 bet on this pair right now?”**
+
+For each pair SmashPool now calculates:
+
+1. Hypothetical total pool = current total pool + $5.
+2. Hypothetical prize pool = hypothetical total pool after the configured house deduction.
+3. Hypothetical pair pool = current amount bet on that pair + $5.
+4. Your winning share = $5 / hypothetical pair pool.
+5. **$5 Pays** = hypothetical prize pool × your winning share.
+6. **Projected Return ($5)** = $5 Pays / $5, displayed as an `×` multiplier.
+
+This means the projection incorporates the effect of the new $5 wager itself instead of applying the pre-bet multiplier.
