@@ -542,3 +542,88 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 }
 
 @media(max-width:700px){.ledger-filters{display:grid;grid-template-columns:1fr;gap:9px}.ledger-filters .search,.ledger-filters .btn{width:100%;min-width:0}}
+
+/* v2.1.11: rebalance public mobile type scale and left-align Projected Return ($5) */
+@media(max-width:760px){
+  /* Header / hero: still phone-readable, but less oversized. */
+  .public-topbar .brand-name{font-size:17px}
+  .public-topbar .brand-subtitle{font-size:10px}
+  .public-topbar .status-chip{font-size:11px;padding:7px 9px}
+  .public-hero .tag{font-size:10px}
+  .public-hero h2{font-size:26px}
+  .public-hero p{font-size:13px;line-height:1.5}
+
+  /* Summary cards. */
+  .public-dashboard .stat-label{font-size:11px}
+  .public-dashboard .stat-value{font-size:25px}
+  .public-dashboard .stat-meta{font-size:10px}
+  .public-dashboard .market-leader-value-row .stat-value{font-size:19px}
+
+  /* Section headings. */
+  .public-dashboard .wide-panel .panel-header h3{font-size:24px}
+  .public-dashboard .wide-panel .panel-header .eyebrow{font-size:12px}
+  .public-dashboard .wide-panel .legend{font-size:12px}
+  .public-dashboard .panel-header h3{font-size:18px}
+  .public-dashboard .panel-header .eyebrow{font-size:9px}
+
+  /* Projected Returns cards. */
+  .public-pair-names strong{font-size:19px;line-height:1.25}
+  .public-pair-card .group-badge{font-size:11px;padding:6px 9px}
+  .public-pair-card .pair-expand-chevron{width:31px;height:31px;font-size:20px}
+
+  .public-pair-primary span,.public-pair-metrics span{font-size:13px;line-height:1.25;margin-bottom:6px}
+  .public-pair-primary strong,
+  .public-pair-primary .multiplier,
+  .public-pair-metrics strong,
+  .public-pair-metrics>div:last-child strong{font-size:18px;line-height:1.2}
+
+  /* Projected Return ($5) should read from the same left edge as Bet on Pair. */
+  .public-pair-primary>div:last-child{text-align:left!important}
+  .public-pair-primary>div:last-child span,
+  .public-pair-primary>div:last-child strong{text-align:left!important}
+
+  .public-pair-expand-label{font-size:14px!important}
+
+  /* Recent activity. */
+  .public-dashboard .activity-copy strong{font-size:13px}
+  .public-dashboard .activity-copy span{font-size:11px}
+  .public-dashboard .activity-amount{font-size:13px}
+  .public-dashboard .empty-mini,.public-dashboard .empty-state{font-size:13px}
+
+  /* Anonymous bettor breakdown. */
+  .bettor-breakdown-heading>span{font-size:13px}
+  .bettor-breakdown-heading>strong{font-size:14px}
+  .bettor-breakdown-person strong{font-size:15px}
+  .bettor-breakdown-person span{font-size:12px}
+  .bettor-breakdown-amount{font-size:17px}
+  .bettor-breakdown-empty{font-size:13px}
+}
+
+@media(max-width:390px){
+  /* Do not scale type back up on narrow phones. */
+  .public-topbar .brand-name{font-size:17px}
+  .public-topbar .status-chip{font-size:11px}
+  .public-hero h2{font-size:25px}
+  .public-hero p{font-size:13px}
+
+  .public-dashboard .stat-label{font-size:11px}
+  .public-dashboard .stat-value{font-size:24px}
+  .public-dashboard .stat-meta{font-size:10px}
+
+  .public-dashboard .wide-panel .panel-header h3{font-size:23px}
+  .public-dashboard .wide-panel .panel-header .eyebrow{font-size:11px}
+  .public-dashboard .wide-panel .legend{font-size:11px}
+
+  .public-pair-names strong{font-size:18px}
+  .public-pair-card .group-badge{font-size:11px}
+  .public-pair-primary span,.public-pair-metrics span{font-size:12px}
+  .public-pair-primary strong,
+  .public-pair-primary .multiplier,
+  .public-pair-metrics strong,
+  .public-pair-metrics>div:last-child strong{font-size:17px}
+  .public-pair-expand-label{font-size:13px!important}
+
+  .public-dashboard .activity-copy strong{font-size:13px}
+  .public-dashboard .activity-copy span{font-size:11px}
+  .public-dashboard .activity-amount{font-size:13px}
+}

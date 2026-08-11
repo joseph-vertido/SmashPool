@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.10
+# SmashPool React + Firebase v2.1.6
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -245,3 +245,10 @@ For each pair SmashPool now calculates:
 6. **Projected Return ($5)** = $5 Pays / $5, displayed as an `×` multiplier.
 
 This means the projection incorporates the effect of the new $5 wager itself instead of applying the pre-bet multiplier.
+
+
+## v2.1.11 mobile public-dashboard refinement
+
+- Reduced public mobile typography slightly for a more balanced phone layout.
+- Left-aligned **Projected Return ($5)** label and value in mobile Projected Returns cards.
+- Kept Admin styling and Firebase data structure unchanged.
