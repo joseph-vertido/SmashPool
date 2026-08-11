@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.4
+# SmashPool React + Firebase v2.1.5
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -205,3 +205,8 @@ Do not rely on hiding the `/admin` URL for security. The included Firestore and 
 ## v2.1.2 mobile readability
 
 The public dashboard now uses larger mobile typography for hero copy, summary cards, pair names, metric labels, projected-return values, and recent bet activity. The desktop/admin layouts remain unchanged.
+
+
+## v2.1.5 mobile readability
+
+The public dashboard now uses a high-legibility phone typography scale. On screens up to 760px, body/supporting text is substantially larger, primary values and pair names are enlarged, and the narrow-phone breakpoint no longer shrinks text below comfortable reading sizes. Admin styling is unchanged.
