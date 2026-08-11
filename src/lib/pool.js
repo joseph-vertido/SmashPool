@@ -206,7 +206,10 @@ export function buildPublicDashboard(state) {
       bettorMap.set(key, existing);
     });
     const bettors = Array.from(bettorMap.values())
-      .sort((a, b) => (b.amount - a.amount) || a.bettor.localeCompare(b.bettor));
+      .sort((a, b) => (b.amount - a.amount) || a.bettor.localeCompare(b.bettor))
+      // Public dashboard intentionally omits bettor names. The name is used
+      // only above to aggregate multiple wagers by the same person.
+      .map(({ amount, betCount }) => ({ amount, betCount }));
 
     return {
       id: pair.id,
@@ -232,7 +235,6 @@ export function buildPublicDashboard(state) {
     const pair = state.pairs.find(item => item.id === bet.pairId);
     return {
       id: bet.id,
-      bettor: bet.bettor,
       pairId: bet.pairId,
       amount: Number(bet.amount || 0),
       createdAt: bet.createdAt || null,

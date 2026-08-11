@@ -788,14 +788,14 @@ function PublicBettorBreakdown({ pair }) {
   const bettors = Array.isArray(pair?.bettors) ? pair.bettors : [];
   return <div className="public-bettor-breakdown">
     <div className="bettor-breakdown-heading">
-      <span>BETTORS ON THIS PAIR</span>
-      <strong>{bettors.length} {bettors.length === 1 ? 'person' : 'people'} • {currency(pair?.betTotal)}</strong>
+      <span>ANONYMOUS WAGERS ON THIS PAIR</span>
+      <strong>{bettors.length} {bettors.length === 1 ? 'bettor' : 'bettors'} • {currency(pair?.betTotal)}</strong>
     </div>
     {bettors.length ? <div className="bettor-breakdown-list">
-      {bettors.map((item, index) => <div className="bettor-breakdown-item" key={`${String(item.bettor).toLowerCase()}-${index}`}>
+      {bettors.map((item, index) => <div className="bettor-breakdown-item" key={`anonymous-${index}-${Number(item.amount || 0)}`}>
         <div className="bettor-breakdown-person">
-          <span className="bettor-breakdown-avatar">{playerInitials(item.bettor)}</span>
-          <div><strong>{item.bettor}</strong>{Number(item.betCount || 0) > 1 && <span>{Number(item.betCount)} bets combined</span>}</div>
+          <span className="bettor-breakdown-avatar">{index + 1}</span>
+          <div><strong>Anonymous Bettor {index + 1}</strong>{Number(item.betCount || 0) > 1 && <span>{Number(item.betCount)} bets combined</span>}</div>
         </div>
         <strong className="bettor-breakdown-amount">{currency(item.amount)}</strong>
       </div>)}
@@ -850,7 +850,7 @@ function PublicDashboard({ data }) {
 
       <div className="dashboard-grid">
         <section className="card panel wide-panel">
-          <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see bettors</div></div>
+          <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see wager amounts</div></div>
           <div className="table-wrap public-market-table"><table>
             <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return</th><th>$20 Pays</th></tr></thead>
             <tbody>{pairs.length ? pairs.map(pair => {
@@ -887,7 +887,7 @@ function PublicDashboard({ data }) {
                     <div><span>Pool share</span><strong>{pct(pair.poolShare)}</strong></div>
                     <div><span>$20 pays</span><strong className="money">{pair.twentyPays ? currency(pair.twentyPays) : '—'}</strong></div>
                   </div>
-                  <div className="public-pair-expand-label">{expanded ? 'Hide bettors' : `View ${Number(pair.bettorCount || 0)} ${Number(pair.bettorCount || 0) === 1 ? 'bettor' : 'bettors'}`}</div>
+                  <div className="public-pair-expand-label">{expanded ? 'Hide wager details' : `View ${Number(pair.bettorCount || 0)} anonymous ${Number(pair.bettorCount || 0) === 1 ? 'bettor' : 'bettors'}`}</div>
                 </button>
                 {expanded && <PublicBettorBreakdown pair={pair} />}
               </article>;
@@ -898,8 +898,8 @@ function PublicDashboard({ data }) {
         <section className="card panel activity-panel">
           <div className="panel-header"><div><div className="eyebrow">RECENT</div><h3>Bet Activity</h3></div></div>
           <div className="activity-list">{recent.length ? recent.map(bet => <div className="activity-item" key={bet.id}>
-            <div className="activity-avatar">{playerInitials(bet.bettor)}</div>
-            <div className="activity-copy"><strong>{bet.bettor}</strong><span>{bet.group || '?'} • {bet.pairName}</span></div>
+            <div className="activity-avatar">$</div>
+            <div className="activity-copy"><strong>Anonymous Bet</strong><span>{bet.group || '?'} • {bet.pairName}</span></div>
             <div className="activity-amount">{currency(bet.amount)}</div>
           </div>) : <div className="empty-mini">No bets yet.</div>}</div>
         </section>

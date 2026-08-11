@@ -1,4 +1,4 @@
-# SmashPool React + Firebase v2.1.3
+# SmashPool React + Firebase v2.1.4
 
 SmashPool is now split into two browser interfaces backed by Firebase:
 
@@ -24,6 +24,12 @@ The public `/` dashboard now has a dedicated responsive layout for mobile browse
 - Each mobile pair card shows profile photos, group, amount wagered, bettor count, pool share, projected return, and the current $20 payout.
 - Bet Activity remains visible and is optimized for narrow screens.
 - The `/admin` interface and Firebase data model are unchanged.
+
+## Public bettor privacy (v2.1.4)
+
+The public dashboard no longer publishes or displays bettor names. Expanded pair details show anonymous bettor rows with wager totals and combined-entry counts, and Recent Bet Activity shows anonymous bets. Bettor names remain available only inside the authenticated Admin interface and `adminPools/*`.
+
+After deploying this version, sign in to `/admin` and make/save a change once so `publicPools/main` is rewritten without the bettor-name fields that may have been published by v2.1.3.
 
 ## Firebase project
 
