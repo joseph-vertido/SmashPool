@@ -18,6 +18,8 @@ export const makeDefaultState = () => ({
   feePercent: 0,
   bettingOpen: true,
   publicDashboardEnabled: true,
+  bettingCutoffAt: null,
+  eventDescriptionHtml: '<p>Live pari-mutuel market activity. Projected payouts change automatically as wagers are added by the tournament administrator.</p>',
   settledWinnerId: null,
   settlementPreviewWinnerId: null,
   preSettlementBettingOpen: null,
@@ -59,7 +61,19 @@ export function migrateState(saved) {
   next.zoomFactor = clampZoom(next.zoomFactor);
   next.feePercent = Math.min(25, Math.max(0, Number(next.feePercent || 0)));
   next.publicDashboardEnabled = next.publicDashboardEnabled !== false;
+  next.bettingCutoffAt = typeof next.bettingCutoffAt === 'string' && next.bettingCutoffAt ? next.bettingCutoffAt : null;
+  next.eventDescriptionHtml = typeof next.eventDescriptionHtml === 'string' ? next.eventDescriptionHtml : base.eventDescriptionHtml;
   return next;
+}
+
+export function cutoffReached(cutoffAt, now = Date.now()) {
+  if (!cutoffAt) return false;
+  const cutoff = new Date(cutoffAt).getTime();
+  return Number.isFinite(cutoff) && cutoff <= Number(now);
+}
+
+export function effectiveBettingOpen(state, now = Date.now()) {
+  return Boolean(state?.bettingOpen) && !cutoffReached(state?.bettingCutoffAt, now);
 }
 
 export function pairName(pair) {
@@ -256,7 +270,14 @@ export function buildAdminDashboardSnapshot(state) {
       bettorCount: bettors.length,
       bettors,
       poolShare: total ? betTotal / total * 100 : 0,
-      projectedReturnOn5: projection?.payout ?? null
+      projectedReturnOn5: projection?.payout ?? null,
+      projectedPayoutOn5: projection?.payout ?? null,
+      wagers: pairBets.map(bet => ({
+        id: bet.id,
+        bettor: bet.bettor,
+        amount: Number(bet.amount || 0),
+        createdAt: bet.createdAt || null
+      }))
     };
   }).sort((a, b) => (b.betTotal - a.betTotal) || (originalOrder.get(a.id) - originalOrder.get(b.id)));
   const leader = pairs.find(pair => pair.betTotal > 0) || null;
@@ -272,7 +293,9 @@ export function buildAdminDashboardSnapshot(state) {
   return {
     tournamentName: state.tournamentName,
     feePercent: Number(state.feePercent || 0),
-    bettingOpen: Boolean(state.bettingOpen),
+    bettingOpen: effectiveBettingOpen(state),
+    bettingCutoffAt: state.bettingCutoffAt || null,
+    eventDescriptionHtml: state.eventDescriptionHtml || '',
     publicDashboardEnabled: state.publicDashboardEnabled !== false,
     totalPool: total,
     prizePool: prize,
@@ -359,7 +382,8 @@ export function buildPublicDashboard(state) {
       bettors,
       poolShare: total ? betTotal / total * 100 : 0,
       projectedReturn5: fiveDollarProjection?.multiplier || null,
-      fivePays: fiveDollarProjection?.payout || null
+      fivePays: fiveDollarProjection?.payout || null,
+      projectedPayoutOn5: fiveDollarProjection?.payout || null
     };
   }).sort((a, b) => (b.betTotal - a.betTotal) || (originalOrder.get(a.id) - originalOrder.get(b.id)));
 
@@ -382,7 +406,9 @@ export function buildPublicDashboard(state) {
   return {
     tournamentName: state.tournamentName,
     feePercent: Number(state.feePercent || 0),
-    bettingOpen: Boolean(state.bettingOpen),
+    bettingOpen: effectiveBettingOpen(state),
+    bettingCutoffAt: state.bettingCutoffAt || null,
+    eventDescriptionHtml: state.eventDescriptionHtml || '',
     publicDashboardEnabled: true,
     totalPool: total,
     prizePool: prize,

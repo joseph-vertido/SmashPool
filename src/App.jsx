@@ -7,8 +7,10 @@ import {
   bettorsOnPair,
   calculateSettlement,
   clampZoom,
+  cutoffReached,
   currency,
   downloadText,
+  effectiveBettingOpen,
   makeDefaultState,
   migrateState,
   nextPairNumber,
@@ -54,6 +56,140 @@ function publicProjectedPayout(data, pair, amount = 5) {
   const nextPrizePool = nextTotalPool * (1 - feePercent / 100);
   const payout = nextPrizePool * (wager / nextPairTotal);
   return Number.isFinite(payout) ? payout : null;
+}
+
+function sanitizeEventDescriptionHtml(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (typeof DOMParser === 'undefined') return raw.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+  const parser = new DOMParser();
+  const documentValue = parser.parseFromString(`<div>${raw}</div>`, 'text/html');
+  const root = documentValue.body.firstElementChild;
+  const allowed = new Set(['P','BR','STRONG','B','EM','I','U','UL','OL','LI','A','DIV']);
+  const elements = Array.from(root.querySelectorAll('*'));
+  elements.forEach(element => {
+    const tag = element.tagName;
+    if (!allowed.has(tag)) {
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IFRAME' || tag === 'OBJECT') {
+        element.remove();
+        return;
+      }
+      element.replaceWith(...Array.from(element.childNodes));
+      return;
+    }
+    const href = tag === 'A' ? element.getAttribute('href') : null;
+    Array.from(element.attributes).forEach(attribute => element.removeAttribute(attribute.name));
+    if (tag === 'A' && href && /^(https?:|mailto:|tel:)/i.test(href.trim())) {
+      element.setAttribute('href', href.trim());
+      element.setAttribute('target', '_blank');
+      element.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  return root.innerHTML;
+}
+
+function toLocalDateTimeInputValue(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = number => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function fromLocalDateTimeInputValue(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function formatRemainingTime(milliseconds) {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const pad = value => String(value).padStart(2, '0');
+  return days > 0 ? `${days}d ${pad(hours)}:${pad(minutes)}:${pad(secs)}` : `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
+}
+
+function CutoffCountdown({ cutoffAt }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!cutoffAt) return undefined;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [cutoffAt]);
+  if (!cutoffAt) return null;
+  const cutoff = new Date(cutoffAt);
+  if (Number.isNaN(cutoff.getTime())) return null;
+  const remaining = cutoff.getTime() - now;
+  return <span className={`cutoff-countdown ${remaining <= 0 ? 'expired' : ''}`} title={`Betting cutoff: ${cutoff.toLocaleString()}`}>{remaining <= 0 ? 'BETTING ENDED' : `ENDS IN ${formatRemainingTime(remaining)}`}</span>;
+}
+
+function EventDescription({ html, className = '' }) {
+  const safeHtml = useMemo(() => sanitizeEventDescriptionHtml(html), [html]);
+  if (!safeHtml) return null;
+  return <div className={`event-description ${className}`.trim()} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
+}
+
+function RichTextEditor({ value, onChange }) {
+  const editorRef = useRef(null);
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== String(value || '')) editorRef.current.innerHTML = String(value || '');
+  }, [value]);
+
+  const sync = () => onChange(sanitizeEventDescriptionHtml(editorRef.current?.innerHTML || ''));
+  const command = (name, argument = null) => {
+    editorRef.current?.focus();
+    document.execCommand(name, false, argument);
+    sync();
+  };
+  const addLink = () => {
+    const href = window.prompt('Enter the link URL (https://, mailto:, or tel:):', 'https://');
+    if (!href) return;
+    if (!/^(https?:|mailto:|tel:)/i.test(href.trim())) return;
+    command('createLink', href.trim());
+  };
+
+  return <div className="rich-editor">
+    <div className="rich-editor-toolbar" aria-label="Event description formatting">
+      <button type="button" onMouseDown={event => { event.preventDefault(); command('bold'); }} title="Bold"><strong>B</strong></button>
+      <button type="button" onMouseDown={event => { event.preventDefault(); command('italic'); }} title="Italic"><em>I</em></button>
+      <button type="button" onMouseDown={event => { event.preventDefault(); command('underline'); }} title="Underline"><u>U</u></button>
+      <button type="button" onMouseDown={event => { event.preventDefault(); command('insertUnorderedList'); }} title="Bulleted list">• List</button>
+      <button type="button" onMouseDown={event => { event.preventDefault(); command('insertOrderedList'); }} title="Numbered list">1. List</button>
+      <button type="button" onMouseDown={event => { event.preventDefault(); addLink(); }} title="Add link">Link</button>
+      <button type="button" onMouseDown={event => { event.preventDefault(); command('removeFormat'); }} title="Clear formatting">Clear</button>
+    </div>
+    <div ref={editorRef} className="rich-editor-surface" contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} onPaste={event => {
+      event.preventDefault();
+      const text = event.clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, text);
+      sync();
+    }} />
+  </div>;
+}
+
+function AdminWagerBreakdown({ bets, pairTotal, currentPrizePool, archived = false }) {
+  const wagerRows = Array.isArray(bets) ? bets.slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))) : [];
+  return <div className={`admin-wager-breakdown ${archived ? 'archived' : ''}`}>
+    <div className="bettor-breakdown-heading">
+      <span>WAGERS ON THIS PAIR</span>
+      <strong>{wagerRows.length} {wagerRows.length === 1 ? 'bet' : 'bets'} • {currency(pairTotal)}</strong>
+    </div>
+    {wagerRows.length ? <div className="admin-wager-list">
+      {wagerRows.map((bet, index) => {
+        const wager = Number(bet.amount || 0);
+        const payout = Number(pairTotal || 0) > 0 ? Number(currentPrizePool || 0) * (wager / Number(pairTotal || 0)) : 0;
+        const when = bet.createdAt ? new Date(bet.createdAt) : null;
+        return <div className="admin-wager-item" key={bet.id || `${bet.bettor}-${index}-${wager}`}>
+          <div className="admin-wager-person"><span className="admin-wager-avatar">{playerInitials(bet.bettor)}</span><div><strong>{bet.bettor || 'Unknown Bettor'}</strong><span>{when && !Number.isNaN(when.getTime()) ? when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Time unavailable'}</span></div></div>
+          <div className="admin-wager-values"><div><span>Wager</span><strong>{currency(wager)}</strong></div><div><span>Projected Payout</span><strong>{currency(payout)}</strong></div></div>
+        </div>;
+      })}
+    </div> : <div className="bettor-breakdown-empty">No bets have been placed on this pair.</div>}
+  </div>;
 }
 
 const PAGE_TITLES = {
@@ -115,32 +251,56 @@ function SettingsModal({ open, state, onClose, onSave, onReset }) {
   const [name, setName] = useState(state.tournamentName);
   const [fee, setFee] = useState(state.feePercent);
   const [publicDashboardEnabled, setPublicDashboardEnabled] = useState(state.publicDashboardEnabled !== false);
+  const [cutoffLocal, setCutoffLocal] = useState(toLocalDateTimeInputValue(state.bettingCutoffAt));
+  const [descriptionHtml, setDescriptionHtml] = useState(state.eventDescriptionHtml || '');
 
   useEffect(() => {
     if (open) {
       setName(state.tournamentName);
       setFee(state.feePercent);
       setPublicDashboardEnabled(state.publicDashboardEnabled !== false);
+      setCutoffLocal(toLocalDateTimeInputValue(state.bettingCutoffAt));
+      setDescriptionHtml(state.eventDescriptionHtml || '');
     }
-  }, [open, state.tournamentName, state.feePercent, state.publicDashboardEnabled]);
+  }, [open, state.tournamentName, state.feePercent, state.publicDashboardEnabled, state.bettingCutoffAt, state.eventDescriptionHtml]);
 
   if (!open) return null;
   return (
     <div className="modal-backdrop" onMouseDown={event => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div className="modal card">
+      <div className="modal card settings-modal-card">
         <div className="modal-header">
           <div><div className="eyebrow">POOL CONFIGURATION</div><h3>Settings</h3></div>
           <button className="icon-btn" type="button" onClick={onClose}>×</button>
         </div>
         <form onSubmit={event => {
           event.preventDefault();
-          onSave(name.trim() || 'Badminton Championship Pool', Math.min(25, Math.max(0, Number(fee || 0))), publicDashboardEnabled);
+          onSave(
+            name.trim() || 'Badminton Championship Pool',
+            Math.min(25, Math.max(0, Number(fee || 0))),
+            publicDashboardEnabled,
+            fromLocalDateTimeInputValue(cutoffLocal),
+            sanitizeEventDescriptionHtml(descriptionHtml)
+          );
         }}>
           <label>Tournament Name<input value={name} onChange={event => setName(event.target.value)} maxLength={80} /></label>
           <label>Organizer / Pool Deduction (%)<input value={fee} onChange={event => setFee(event.target.value)} type="number" min="0" max="25" step="0.5" /></label>
           <div className="callout">The prize pool equals total wagers minus this deduction. Set this to 0% if the organizer is not retaining any portion of the pool.</div>
+
+          <label>Betting Cutoff Date &amp; Time
+            <div className="cutoff-setting-row">
+              <input value={cutoffLocal} onChange={event => setCutoffLocal(event.target.value)} type="datetime-local" />
+              <button className="btn ghost" type="button" onClick={() => setCutoffLocal('')} disabled={!cutoffLocal}>Clear</button>
+            </div>
+          </label>
+          <div className="callout">The cutoff uses your device's local date and time when saved. At zero, bet entry is disabled immediately and an active Admin session automatically persists Betting Closed to Firebase.</div>
+
+          <label>Event Description
+            <RichTextEditor value={descriptionHtml} onChange={setDescriptionHtml} />
+          </label>
+          <div className="callout">Use bold, italic, underline, lists, or links. This description appears on both the Admin and public dashboards and is preserved in Event Archives.</div>
+
           <div className="settings-toggle-row">
             <div className="settings-toggle-copy">
               <strong>Public Dashboard Visibility</strong>
@@ -163,8 +323,10 @@ function SettingsModal({ open, state, onClose, onSave, onReset }) {
 }
 
 function Dashboard({ state, onView, onToggleBetting }) {
+  const [expandedPairs, setExpandedPairs] = useState(() => new Set());
   const total = totalPool(state);
   const prize = prizePool(state);
+  const bettingIsOpen = effectiveBettingOpen(state);
   const uniqueBettors = new Set(state.bets.map(bet => String(bet.bettor).trim().toLowerCase()).filter(Boolean)).size;
   const originalOrder = new Map(state.pairs.map((pair, index) => [pair.id, index]));
   const marketPairs = state.pairs.slice().sort((a, b) => {
@@ -173,17 +335,23 @@ function Dashboard({ state, onView, onToggleBetting }) {
   });
   const leader = marketPairs[0] && totalOnPair(state, marketPairs[0].id) > 0 ? marketPairs[0] : null;
   const recent = state.bets.slice().reverse().slice(0, 10);
+  const togglePair = pairId => setExpandedPairs(current => {
+    const next = new Set(current);
+    if (next.has(pairId)) next.delete(pairId);
+    else next.add(pairId);
+    return next;
+  });
 
   return (
     <>
       <div className="hero card">
         <div className="hero-copy">
-          <div className="tag">LIVE POOL</div>
+          <div className="hero-tag-row"><div className="tag">LIVE POOL</div><CutoffCountdown cutoffAt={state.bettingCutoffAt} /></div>
           <h2>{state.tournamentName}</h2>
-          <p>Live market activity, dynamic pari-mutuel returns, and proportional payouts—all in one browser dashboard.</p>
+          <EventDescription html={state.eventDescriptionHtml} className="admin-event-description" />
           <div className="hero-actions">
-            <button className="btn primary" onClick={() => onView('betting')}>Enter a Bet</button>
-            <button className="btn ghost" onClick={onToggleBetting}>{state.bettingOpen ? 'Close Betting' : 'Reopen Betting'}</button>
+            <button className="btn primary" onClick={() => onView('betting')} disabled={!bettingIsOpen}>Enter a Bet</button>
+            <button className="btn ghost" onClick={onToggleBetting}>{bettingIsOpen ? 'Close Betting' : 'Reopen Betting'}</button>
           </div>
         </div>
         <div className="hero-orbit" aria-hidden="true"><div className="shuttle">◒</div><div className="orbit-ring ring-a" /><div className="orbit-ring ring-b" /></div>
@@ -205,22 +373,27 @@ function Dashboard({ state, onView, onToggleBetting }) {
 
       <div className="dashboard-grid">
         <section className="card panel wide-panel">
-          <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Changes with every bet</div></div>
+          <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Click a pair to see named wagers</div></div>
           <div className="table-wrap"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead>
             <tbody>
               {marketPairs.length === 0 ? <tr><td colSpan="6"><div className="empty-state">No pairs yet. Add a pair from Pairs & Players.</div></td></tr> : marketPairs.map(pair => {
                 const onPair = totalOnPair(state, pair.id);
                 const share = total ? onPair / total * 100 : 0;
                 const fiveDollarProjection = projectedBet(state, pair.id, 5);
-                return <tr key={pair.id}>
-                  <td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><div><strong>{pairName(pair)}</strong></div></div></td>
-                  <td><GroupBadge group={pair.group} /></td>
-                  <td className="money">{currency(onPair)}</td>
-                  <td className="bettor-count">{bettorsOnPair(state, pair.id)}</td>
-                  <td>{pct(share)}</td>
-                  <td className="multiplier">{fiveDollarProjection ? currency(fiveDollarProjection.payout) : '—'}</td>
-                </tr>;
+                const pairBets = state.bets.filter(bet => bet.pairId === pair.id);
+                const expanded = expandedPairs.has(pair.id);
+                return <React.Fragment key={pair.id}>
+                  <tr className={`expandable-market-row admin-expandable-row ${expanded ? 'expanded' : ''}`} onClick={() => togglePair(pair.id)} aria-expanded={expanded}>
+                    <td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><div><strong>{pairName(pair)}</strong></div><span className="pair-expand-chevron" aria-hidden="true">⌄</span></div></td>
+                    <td><GroupBadge group={pair.group} /></td>
+                    <td className="money">{currency(onPair)}</td>
+                    <td className="bettor-count">{bettorsOnPair(state, pair.id)}</td>
+                    <td>{pct(share)}</td>
+                    <td className="multiplier">{fiveDollarProjection ? currency(fiveDollarProjection.payout) : '—'}</td>
+                  </tr>
+                  {expanded && <tr className="bettor-breakdown-row admin-breakdown-row"><td colSpan="6"><AdminWagerBreakdown bets={pairBets} pairTotal={onPair} currentPrizePool={prize} /></td></tr>}
+                </React.Fragment>;
               })}
             </tbody>
           </table></div>
@@ -260,7 +433,8 @@ function Betting({ state, updateState, toast, showNotice }) {
   const pair = state.pairs.find(item => item.id === pairId);
   const numericAmount = Number(amount || 0);
   const multiplier = pair && numericAmount > 0 ? pairMultiplier(state, pairId, numericAmount) : null;
-  const interactive = state.bettingOpen && !pending;
+  const bettingIsOpen = effectiveBettingOpen(state);
+  const interactive = bettingIsOpen && !pending;
 
   useEffect(() => {
     if (pairId && !state.pairs.some(item => item.id === pairId)) setPairId('');
@@ -268,7 +442,7 @@ function Betting({ state, updateState, toast, showNotice }) {
 
   async function submit(event) {
     event.preventDefault();
-    if (!state.bettingOpen) { toast('Betting is currently closed'); return; }
+    if (!effectiveBettingOpen(state)) { toast(cutoffReached(state.bettingCutoffAt) ? 'Betting cutoff has been reached' : 'Betting is currently closed'); return; }
     const name = bettor.trim();
     if (!name || !pairId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
       await showNotice('Enter a bettor name, select a pair, and enter a valid amount.', { title: 'Incomplete bet' });
@@ -285,7 +459,7 @@ function Betting({ state, updateState, toast, showNotice }) {
   return (
     <div className="split-layout">
       <section className="card form-card">
-        <div className="panel-header"><div><div className="eyebrow">NEW WAGER</div><h3>Enter Bet</h3></div><span className={`pill ${state.bettingOpen ? 'open' : 'closed'}`}>{state.bettingOpen ? 'OPEN' : 'CLOSED'}</span></div>
+        <div className="panel-header"><div><div className="eyebrow">NEW WAGER</div><h3>Enter Bet</h3></div><div className="betting-status-stack"><span className={`pill ${bettingIsOpen ? 'open' : 'closed'}`}>{bettingIsOpen ? 'OPEN' : 'CLOSED'}</span><CutoffCountdown cutoffAt={state.bettingCutoffAt} /></div></div>
         <form id="betForm" onSubmit={submit}>
           <label>Bettor Name<input value={bettor} onChange={event => setBettor(event.target.value)} disabled={!interactive} required maxLength={60} placeholder="e.g. Joseph" autoComplete="off" /></label>
           <label>Select Pair<select value={pairId} onChange={event => setPairId(event.target.value)} disabled={!interactive} required><option value="">Choose a pair...</option><PairOptions state={state} /></select></label>
@@ -296,7 +470,7 @@ function Betting({ state, updateState, toast, showNotice }) {
             <div><span>Projected Multiplier</span><strong>{multiplier ? `${multiplier.toFixed(2)}×` : '—'}</strong></div>
             <div><span>Projected Return</span><strong>{multiplier ? currency(numericAmount * multiplier) : '—'}</strong></div>
           </div>
-          <button className="btn primary full" type="submit" disabled={!interactive}>{!state.bettingOpen ? 'Betting is Closed' : pending ? 'Saving Bet…' : 'Add Bet to Pool'}</button>
+          <button className="btn primary full" type="submit" disabled={!interactive}>{!bettingIsOpen ? (cutoffReached(state.bettingCutoffAt) ? 'Betting Cutoff Reached' : 'Betting is Closed') : pending ? 'Saving Bet…' : 'Add Bet to Pool'}</button>
         </form>
       </section>
 
@@ -577,6 +751,33 @@ function EventArchives({ archives, loading, error, selectedId, onSelect, onArchi
   const pairById = new Map((archivedState?.pairs || []).map(pair => [pair.id, pair]));
   const archivedPairs = (dashboard?.pairs || []).map(pair => ({ ...(pairById.get(pair.id) || {}), ...pair }));
   const ledger = archivedState?.bets?.slice().reverse() || [];
+  const [expandedPairs, setExpandedPairs] = useState(() => new Set());
+  const [bettorQuery, setBettorQuery] = useState('');
+  const [playerQuery, setPlayerQuery] = useState('');
+
+  useEffect(() => {
+    setExpandedPairs(new Set());
+    setBettorQuery('');
+    setPlayerQuery('');
+  }, [selected?.id]);
+
+  const togglePair = pairId => setExpandedPairs(current => {
+    const next = new Set(current);
+    if (next.has(pairId)) next.delete(pairId);
+    else next.add(pairId);
+    return next;
+  });
+
+  const bettorQ = bettorQuery.trim().toLowerCase();
+  const playerQ = playerQuery.trim().toLowerCase();
+  const filteredLedger = ledger.filter(bet => {
+    const pair = pairById.get(bet.pairId);
+    const bettorMatches = !bettorQ || String(bet.bettor || '').toLowerCase().includes(bettorQ);
+    const playerMatches = !playerQ || pairName(pair).toLowerCase().includes(playerQ);
+    return bettorMatches && playerMatches;
+  });
+  const archiveCutoff = dashboard?.bettingCutoffAt || selected?.state?.bettingCutoffAt || null;
+  const archiveDescription = dashboard?.eventDescriptionHtml || selected?.state?.eventDescriptionHtml || '';
 
   return <div className="archive-layout">
     <section className="card panel archive-index-panel">
@@ -601,7 +802,7 @@ function EventArchives({ archives, loading, error, selectedId, onSelect, onArchi
     <section className="archive-review">
       {!selected ? <div className="card panel"><div className="empty-state">Select an archived event to review it.</div></div> : <>
         <section className="card panel archive-review-header">
-          <div className="archive-review-title"><div className="eyebrow">ARCHIVED EVENT</div><h2>{selected.tournamentName}</h2><div className="archive-review-meta"><ArchiveDate archive={selected} />{selected.archivedBy ? <span>Archived by {selected.archivedBy}</span> : null}<span>Snapshot v{selected.schemaVersion || 1}</span></div></div>
+          <div className="archive-review-title"><div className="eyebrow">ARCHIVED EVENT</div><h2>{selected.tournamentName}</h2><div className="archive-review-meta"><ArchiveDate archive={selected} />{selected.archivedBy ? <span>Archived by {selected.archivedBy}</span> : null}<span>Snapshot v{selected.schemaVersion || 1}</span>{archiveCutoff ? <span>Cutoff {new Date(archiveCutoff).toLocaleString()}</span> : <span>No cutoff set</span>}</div><EventDescription html={archiveDescription} className="archive-event-description" /></div>
           <span className={`pill ${settlement?.finalized ? 'open' : ''}`}>{settlement?.finalized ? 'FINALIZED' : (settlement?.hasPreview ? 'PREVIEW' : 'UNSETTLED')}</span>
         </section>
 
@@ -613,9 +814,20 @@ function EventArchives({ archives, loading, error, selectedId, onSelect, onArchi
         </div>
 
         <section className="card panel archive-section">
-          <div className="panel-header"><div><div className="eyebrow">FROZEN DASHBOARD</div><h3>Projected Returns</h3></div><span className={`pill ${dashboard?.bettingOpen ? 'open' : ''}`}>{dashboard?.bettingOpen ? 'BETTING OPEN' : 'BETTING CLOSED'}</span></div>
-          <div className="table-wrap"><table><thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead><tbody>
-            {archivedPairs.length ? archivedPairs.map(pair => <tr key={pair.id}><td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><strong>{pairName(pair)}</strong></div></td><td><GroupBadge group={pair.group} /></td><td className="money">{currency(pair.betTotal)}</td><td>{Number(pair.bettorCount || 0)}</td><td>{pct(pair.poolShare)}</td><td className="money">{pair.projectedReturnOn5 != null ? currency(pair.projectedReturnOn5) : '—'}</td></tr>) : <tr><td colSpan="6"><div className="empty-state">No pairs in this archived event.</div></td></tr>}
+          <div className="panel-header"><div><div className="eyebrow">FROZEN DASHBOARD</div><h3>Projected Returns</h3></div><div className="archive-market-status"><span className={`pill ${dashboard?.bettingOpen ? 'open' : ''}`}>{dashboard?.bettingOpen ? 'BETTING OPEN' : 'BETTING CLOSED'}</span><span className="legend"><span className="legend-dot" /> Click a pair to see named wagers</span></div></div>
+          <div className="table-wrap"><table><thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead><tbody>
+            {archivedPairs.length ? archivedPairs.map(pair => {
+              const expanded = expandedPairs.has(pair.id);
+              const pairBets = (archivedState?.bets || []).filter(bet => bet.pairId === pair.id);
+              const projected = pair.projectedPayoutOn5 ?? pair.projectedReturnOn5 ?? pair.fivePays ?? null;
+              return <React.Fragment key={pair.id}>
+                <tr className={`expandable-market-row admin-expandable-row ${expanded ? 'expanded' : ''}`} onClick={() => togglePair(pair.id)} aria-expanded={expanded}>
+                  <td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><strong>{pairName(pair)}</strong><span className="pair-expand-chevron" aria-hidden="true">⌄</span></div></td>
+                  <td><GroupBadge group={pair.group} /></td><td className="money">{currency(pair.betTotal)}</td><td>{Number(pair.bettorCount || 0)}</td><td>{pct(pair.poolShare)}</td><td className="money multiplier">{projected != null ? currency(projected) : '—'}</td>
+                </tr>
+                {expanded && <tr className="bettor-breakdown-row admin-breakdown-row"><td colSpan="6"><AdminWagerBreakdown bets={pairBets} pairTotal={Number(pair.betTotal || 0)} currentPrizePool={Number(dashboard?.prizePool || 0)} archived /></td></tr>}
+              </React.Fragment>;
+            }) : <tr><td colSpan="6"><div className="empty-state">No pairs in this archived event.</div></td></tr>}
           </tbody></table></div>
         </section>
 
@@ -627,16 +839,16 @@ function EventArchives({ archives, loading, error, selectedId, onSelect, onArchi
         </section>
 
         <section className="card panel archive-section">
-          <div className="panel-header"><div><div className="eyebrow">ROSTER SNAPSHOT</div><h3>Pairs & Players</h3></div><span className="archive-count">{archivedState?.pairs?.length || 0} pairs</span></div>
+          <div className="panel-header"><div><div className="eyebrow">ROSTER SNAPSHOT</div><h3>Pairs &amp; Players</h3></div><span className="archive-count">{archivedState?.pairs?.length || 0} pairs</span></div>
           <div className="archive-roster-grid">
             {(archivedState?.pairs || []).map(pair => <article className="archive-pair-card" key={pair.id}><div className="archive-pair-top"><PairAvatars pair={pair} className="archive-pair-avatars" /><GroupBadge group={pair.group} /></div><strong>{pair.player1}</strong><span>&amp;</span><strong>{pair.player2}</strong></article>)}
           </div>
         </section>
 
         <section className="card panel archive-section">
-          <div className="panel-header"><div><div className="eyebrow">AUDIT TRAIL</div><h3>Complete Bet Ledger</h3></div><span className="archive-count">{ledger.length} bets</span></div>
+          <div className="panel-header archive-ledger-header"><div><div className="eyebrow">AUDIT TRAIL</div><h3>Complete Bet Ledger</h3></div><div className="inline-actions ledger-filters archive-ledger-filters"><input className="search" value={bettorQuery} onChange={event => setBettorQuery(event.target.value)} placeholder="Search Bettor" aria-label="Search archived bettor" /><input className="search" value={playerQuery} onChange={event => setPlayerQuery(event.target.value)} placeholder="Search Player" aria-label="Search archived player" /><span className="archive-count">{filteredLedger.length === ledger.length ? `${ledger.length} bets` : `${filteredLedger.length} of ${ledger.length} bets`}</span></div></div>
           <div className="table-wrap"><table><thead><tr><th>Date / Time</th><th>Bettor</th><th>Pair</th><th>Group</th><th>Amount</th></tr></thead><tbody>
-            {ledger.length ? ledger.map(bet => { const pair = pairById.get(bet.pairId); return <tr key={bet.id}><td>{bet.createdAt ? new Date(bet.createdAt).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '—'}</td><td><strong>{bet.bettor}</strong></td><td>{pairName(pair)}</td><td>{pair ? <GroupBadge group={pair.group} /> : '?'}</td><td className="money">{currency(bet.amount)}</td></tr>; }) : <tr><td colSpan="5"><div className="empty-state">No bets were recorded.</div></td></tr>}
+            {filteredLedger.length ? filteredLedger.map(bet => { const pair = pairById.get(bet.pairId); return <tr key={bet.id}><td>{bet.createdAt ? new Date(bet.createdAt).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '—'}</td><td><strong>{bet.bettor}</strong></td><td>{pairName(pair)}</td><td>{pair ? <GroupBadge group={pair.group} /> : '?'}</td><td className="money">{currency(bet.amount)}</td></tr>; }) : <tr><td colSpan="5"><div className="empty-state">No matching archived bets.</div></td></tr>}
           </tbody></table></div>
         </section>
 
@@ -676,6 +888,7 @@ function AdminApp({ user }) {
   const saveTimer = useRef(null);
   const saveQueue = useRef(Promise.resolve());
   const toastTimer = useRef(null);
+  const cutoffCloseRef = useRef('');
 
   useEffect(() => {
     let alive = true;
@@ -710,6 +923,20 @@ function AdminApp({ user }) {
     }, 180);
     return () => clearTimeout(saveTimer.current);
   }, [state, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !state.bettingOpen || !state.bettingCutoffAt) return undefined;
+    const closeAtCutoff = () => {
+      if (!cutoffReached(state.bettingCutoffAt)) return;
+      if (cutoffCloseRef.current === state.bettingCutoffAt) return;
+      cutoffCloseRef.current = state.bettingCutoffAt;
+      setState(current => effectiveBettingOpen(current) ? current : ({ ...current, bettingOpen: false }));
+      toast('Betting cutoff reached • Betting closed');
+    };
+    closeAtCutoff();
+    const timer = window.setInterval(closeAtCutoff, 1000);
+    return () => window.clearInterval(timer);
+  }, [hydrated, state.bettingOpen, state.bettingCutoffAt]);
 
   useEffect(() => {
     if (view !== 'archives' || archivesLoading) return undefined;
@@ -797,9 +1024,14 @@ function AdminApp({ user }) {
   function changeZoom(delta) { setZoom(state.zoomFactor + delta); }
 
   async function toggleBetting() {
-    const nextOpen = !state.bettingOpen;
+    const currentlyOpen = effectiveBettingOpen(state);
+    const nextOpen = !currentlyOpen;
     if (nextOpen && state.settledWinnerId) {
       await showNotice('Undo the final payout before reopening betting.', { title: 'Settlement is finalized' });
+      return;
+    }
+    if (nextOpen && cutoffReached(state.bettingCutoffAt)) {
+      await showNotice('The betting cutoff has already passed. Update or clear the cutoff time in Pool Settings before reopening betting.', { title: 'Cutoff reached' });
       return;
     }
     updateState(current => ({ ...current, bettingOpen: nextOpen }));
@@ -877,7 +1109,7 @@ function AdminApp({ user }) {
               ['archives','▣','Event Archives']
             ].map(([id, icon, label]) => <button className={`nav-item ${view === id ? 'active' : ''}`} key={id} onClick={() => { setView(id); setMobileNavOpen(false); }}><span>{icon}</span>{label}</button>)}
           </nav>
-          <div className="sidebar-footer"><div className="status-chip"><span className={`status-dot ${state.bettingOpen ? '' : 'closed-dot'}`} /><span>{state.bettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div><div className="local-note">Firebase Admin<br />{user?.email || 'Authenticated'}</div></div>
+          <div className="sidebar-footer"><div className="status-chip"><span className={`status-dot ${effectiveBettingOpen(state) ? '' : 'closed-dot'}`} /><span>{effectiveBettingOpen(state) ? 'Betting Open' : 'Betting Closed'}</span></div><div className="local-note">Firebase Admin<br />{user?.email || 'Authenticated'}</div></div>
         </aside>
         <button type="button" className={`mobile-nav-backdrop ${mobileNavOpen ? 'show' : ''}`} aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />
 
@@ -907,7 +1139,7 @@ function AdminApp({ user }) {
         </main>
       </div>
 
-      <SettingsModal open={settingsOpen} state={state} onClose={() => setSettingsOpen(false)} onSave={(name, fee, publicDashboardEnabled) => { updateState(current => ({ ...current, tournamentName: name, feePercent: fee, publicDashboardEnabled })); setSettingsOpen(false); toast(publicDashboardEnabled ? 'Settings saved • Public dashboard enabled' : 'Settings saved • Public dashboard hidden'); }} onReset={resetTournament} />
+      <SettingsModal open={settingsOpen} state={state} onClose={() => setSettingsOpen(false)} onSave={(name, fee, publicDashboardEnabled, bettingCutoffAt, eventDescriptionHtml) => { updateState(current => ({ ...current, tournamentName: name, feePercent: fee, publicDashboardEnabled, bettingCutoffAt, eventDescriptionHtml })); setSettingsOpen(false); toast(publicDashboardEnabled ? 'Settings saved • Public dashboard enabled' : 'Settings saved • Public dashboard hidden'); }} onReset={resetTournament} />
       <ActionDialog dialog={dialog} onResult={resolveDialog} />
       <div className={`toast ${toastMessage ? 'show' : ''}`}>{toastMessage}</div>
     </>
@@ -992,6 +1224,13 @@ function PublicDashboard({ data }) {
   const recent = Array.isArray(data?.recentBets) ? data.recentBets : [];
   const leader = pairs.find(pair => pair.id === data?.mostBetOnPairId) || null;
   const [expandedPairs, setExpandedPairs] = useState(() => new Set());
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!data?.bettingCutoffAt) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [data?.bettingCutoffAt]);
+  const publicBettingOpen = Boolean(data?.bettingOpen) && !cutoffReached(data?.bettingCutoffAt, now);
 
   const togglePair = pairId => {
     setExpandedPairs(current => {
@@ -1005,15 +1244,15 @@ function PublicDashboard({ data }) {
   return <div className="public-dashboard">
     <header className="public-topbar">
       <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Live Pari-Mutuel Dashboard</div></div></div>
-      <div className="status-chip"><span className={`status-dot ${data?.bettingOpen ? '' : 'closed-dot'}`} /><span>{data?.bettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div>
+      <div className="status-chip"><span className={`status-dot ${publicBettingOpen ? '' : 'closed-dot'}`} /><span>{publicBettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div>
     </header>
 
     <main className="public-main">
       <div className="hero card public-hero">
         <div className="hero-copy">
-          <div className="tag">LIVE POOL</div>
+          <div className="hero-tag-row"><div className="tag">LIVE POOL</div><CutoffCountdown cutoffAt={data?.bettingCutoffAt} /></div>
           <h2>{data?.tournamentName || 'SmashPool Tournament'}</h2>
-          <p>Live pari-mutuel market activity. Projected returns change automatically as wagers are added by the tournament administrator.</p>
+          <EventDescription html={data?.eventDescriptionHtml} className="public-event-description" />
         </div>
         <div className="hero-orbit" aria-hidden="true"><div className="shuttle">◒</div><div className="orbit-ring ring-a" /><div className="orbit-ring ring-b" /></div>
       </div>
@@ -1036,7 +1275,7 @@ function PublicDashboard({ data }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see wager amounts</div></div>
           <div className="table-wrap public-market-table"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead>
             <tbody>{pairs.length ? pairs.map(pair => {
               const expanded = expandedPairs.has(pair.id);
               return <React.Fragment key={pair.id}>
@@ -1066,7 +1305,7 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-primary">
                     <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
+                    <div><span>Projected Payout (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-metrics">
                     <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>

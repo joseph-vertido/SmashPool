@@ -97,8 +97,8 @@ export async function archiveEvent(state, archivedBy = '') {
   const cleanState = JSON.parse(JSON.stringify(migrateState(state)));
   const archivedAtIso = new Date().toISOString();
   const snapshot = {
-    schemaVersion: 1,
-    appVersion: '2.1.18',
+    schemaVersion: 2,
+    appVersion: '2.1.19',
     poolId: POOL_ID,
     tournamentName: cleanState.tournamentName,
     archivedBy: String(archivedBy || ''),

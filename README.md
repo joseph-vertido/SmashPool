@@ -1,4 +1,16 @@
-# SmashPool React + Firebase v2.1.18
+# SmashPool React + Firebase v2.1.19
+
+## v2.1.19 — Archive wager drill-down, cutoff countdown, and editable event description
+
+- Admin Dashboard **Projected Returns** rows can now be expanded to review every individual named wager on a pair, including bettor, wager amount, timestamp, and current projected payout.
+- Event Archive **Projected Returns** rows have the same named wager drill-down using the frozen archived pool.
+- Archived **Complete Bet Ledger** now has independent **Search Bettor** and **Search Player** filters.
+- Renamed **Projected Return (On $5 Bet)** to **Projected Payout (On $5 Bet)** across Admin, Public, and Archive dashboards.
+- Added **Betting Cutoff Date & Time** in Pool Settings. A live countdown appears beside the **LIVE POOL** pill on both Admin and Public dashboards.
+- When the cutoff reaches zero, bet entry is immediately disabled. An active Admin session automatically persists `bettingOpen: false` to Firebase; any later Admin session also recognizes an expired cutoff before allowing bets.
+- Added a configurable **Event Description** with basic rich-text controls for bold, italic, underline, bulleted/numbered lists, links, and clear formatting. The description is shown on Admin/Public dashboards and preserved in archives.
+- Cutoff and event-description fields are included in tournament export/import, private Admin state, public snapshots (when visible), and archive snapshots.
+- Public bettor names remain excluded from `publicPools`; named wager drill-down is Admin/archive-only.
 
 
 ## v2.1.18 — Public Dashboard Visibility
