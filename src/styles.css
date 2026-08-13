@@ -775,3 +775,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .archive-market-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.archive-ledger-header{align-items:flex-start;gap:12px}.archive-ledger-filters{justify-content:flex-end}.archive-ledger-filters .archive-count{align-self:center}
 @media(max-width:900px){.admin-wager-list{grid-template-columns:1fr}.archive-ledger-header{display:flex!important;flex-direction:column;align-items:stretch}.archive-ledger-filters{display:grid;grid-template-columns:1fr 1fr;justify-content:stretch}.archive-ledger-filters .search{width:100%;min-width:0}.archive-ledger-filters .archive-count{grid-column:1/-1}}
 @media(max-width:600px){.settings-modal-card{width:calc(100vw - 20px);max-height:calc(100vh - 20px);padding:18px}.cutoff-setting-row{grid-template-columns:1fr}.cutoff-setting-row .btn{width:100%}.rich-editor-toolbar button{flex:1 0 auto}.hero-tag-row{gap:7px}.cutoff-countdown{font-size:9px;padding:5px 8px}.event-description{font-size:12px;line-height:1.55}.admin-wager-item{align-items:flex-start;flex-direction:column}.admin-wager-values{width:100%;grid-template-columns:1fr 1fr;text-align:left}.archive-ledger-filters{grid-template-columns:1fr}.archive-ledger-filters .archive-count{grid-column:auto}.archive-market-status{justify-content:flex-start}}
+
+/* v2.1.20 — reliable Event Description editing */
+.settings-field-group{display:grid;gap:7px}
+.settings-field-label{color:#8ca2b3;font-size:11px;font-weight:700}
+.rich-editor-surface{cursor:text;caret-color:var(--cyan);-webkit-user-select:text;user-select:text;touch-action:manipulation}
+.rich-editor-surface:empty:before{content:"Enter the event description…";color:#536d81;pointer-events:none}

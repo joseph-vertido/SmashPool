@@ -1,3 +1,10 @@
+## v2.1.20 — Event Description typing fix
+
+- Fixed the Admin **Event Description** rich-text editor so normal keyboard typing works reliably, including mobile browsers.
+- The editor is no longer nested inside a form `<label>`, avoiding mobile/contentEditable focus conflicts.
+- While the editor has focus, React no longer rewrites its HTML on each change, preventing caret and virtual-keyboard resets.
+- Paste and the existing formatting toolbar remain supported.
+
 # SmashPool React + Firebase v2.1.19
 
 ## v2.1.19 — Archive wager drill-down, cutoff countdown, and editable event description

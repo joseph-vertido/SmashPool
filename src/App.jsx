@@ -135,15 +135,32 @@ function EventDescription({ html, className = '' }) {
 
 function RichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
+  const editingRef = useRef(false);
+  const draftRef = useRef(String(value || ''));
+
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== String(value || '')) editorRef.current.innerHTML = String(value || '');
+    const nextValue = String(value || '');
+    draftRef.current = nextValue;
+    // Never rewrite the contentEditable DOM while the user is typing. Replacing
+    // innerHTML while focused can reset the caret / virtual keyboard on mobile.
+    if (!editingRef.current && editorRef.current && editorRef.current.innerHTML !== nextValue) {
+      editorRef.current.innerHTML = nextValue;
+    }
   }, [value]);
 
-  const sync = () => onChange(sanitizeEventDescriptionHtml(editorRef.current?.innerHTML || ''));
+  const captureDraft = () => {
+    draftRef.current = editorRef.current?.innerHTML || '';
+  };
+  const commit = () => {
+    captureDraft();
+    const clean = sanitizeEventDescriptionHtml(draftRef.current);
+    draftRef.current = clean;
+    onChange(clean);
+  };
   const command = (name, argument = null) => {
     editorRef.current?.focus();
     document.execCommand(name, false, argument);
-    sync();
+    captureDraft();
   };
   const addLink = () => {
     const href = window.prompt('Enter the link URL (https://, mailto:, or tel:):', 'https://');
@@ -162,12 +179,22 @@ function RichTextEditor({ value, onChange }) {
       <button type="button" onMouseDown={event => { event.preventDefault(); addLink(); }} title="Add link">Link</button>
       <button type="button" onMouseDown={event => { event.preventDefault(); command('removeFormat'); }} title="Clear formatting">Clear</button>
     </div>
-    <div ref={editorRef} className="rich-editor-surface" contentEditable suppressContentEditableWarning onInput={sync} onBlur={sync} onPaste={event => {
-      event.preventDefault();
-      const text = event.clipboardData.getData('text/plain');
-      document.execCommand('insertText', false, text);
-      sync();
-    }} />
+    <div
+      ref={editorRef}
+      className="rich-editor-surface"
+      contentEditable="true"
+      role="textbox"
+      aria-multiline="true"
+      aria-label="Event Description"
+      tabIndex={0}
+      inputMode="text"
+      spellCheck="true"
+      suppressContentEditableWarning
+      onFocus={() => { editingRef.current = true; }}
+      onInput={captureDraft}
+      onBlur={() => { editingRef.current = false; commit(); }}
+      onPaste={() => { window.setTimeout(captureDraft, 0); }}
+    />
   </div>;
 }
 
@@ -296,9 +323,10 @@ function SettingsModal({ open, state, onClose, onSave, onReset }) {
           </label>
           <div className="callout">The cutoff uses your device's local date and time when saved. At zero, bet entry is disabled immediately and an active Admin session automatically persists Betting Closed to Firebase.</div>
 
-          <label>Event Description
+          <div className="settings-field-group">
+            <div className="settings-field-label">Event Description</div>
             <RichTextEditor value={descriptionHtml} onChange={setDescriptionHtml} />
-          </label>
+          </div>
           <div className="callout">Use bold, italic, underline, lists, or links. This description appears on both the Admin and public dashboards and is preserved in Event Archives.</div>
 
           <div className="settings-toggle-row">
