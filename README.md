@@ -1,3 +1,8 @@
+## v2.1.21 — Version label in public header
+
+- Replaced the public top-bar subtitle `Live Pari-Mutuel Dashboard` with the current application version.
+- The displayed value is read from `package.json`, so the header stays aligned with the release version.
+
 ## v2.1.20 — Event Description typing fix
 
 - Fixed the Admin **Event Description** rich-text editor so normal keyboard typing works reliably, including mobile browsers.

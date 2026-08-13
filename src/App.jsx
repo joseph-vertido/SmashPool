@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import packageInfo from '../package.json';
 import {
   GROUPS,
   MAX_ZOOM,
@@ -1271,7 +1272,7 @@ function PublicDashboard({ data }) {
 
   return <div className="public-dashboard">
     <header className="public-topbar">
-      <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Live Pari-Mutuel Dashboard</div></div></div>
+      <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">v{packageInfo.version}</div></div></div>
       <div className="status-chip"><span className={`status-dot ${publicBettingOpen ? '' : 'closed-dot'}`} /><span>{publicBettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div>
     </header>
 
