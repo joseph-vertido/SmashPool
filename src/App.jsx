@@ -26,6 +26,7 @@ import {
 } from './lib/pool.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import {
+  archiveEvent,
   auth,
   deleteProfilePhoto,
   firebaseMissingKeys,
@@ -33,6 +34,7 @@ import {
   isAdminUser,
   listenPublicDashboard,
   loadAdminState,
+  loadEventArchives,
   migrateInlinePhotosToStorage,
   saveAdminState,
   uploadProfilePhoto
@@ -54,48 +56,13 @@ function publicProjectedPayout(data, pair, amount = 5) {
   return Number.isFinite(payout) ? payout : null;
 }
 
-
-function toDateTimeLocalValue(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = number => String(number).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function CutoffCountdown({ cutoffAt }) {
-  const cutoffMs = cutoffAt ? new Date(cutoffAt).getTime() : NaN;
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    if (!Number.isFinite(cutoffMs)) return undefined;
-    setNow(Date.now());
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [cutoffMs]);
-
-  if (!Number.isFinite(cutoffMs)) return null;
-  const remainingMs = Math.max(0, cutoffMs - now);
-  if (remainingMs <= 0) return <span className="cutoff-countdown expired">Cutoff reached</span>;
-
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const text = days > 0
-    ? `${days}d ${hours}h ${minutes}m ${seconds}s remaining`
-    : `${hours}h ${minutes}m ${seconds}s remaining`;
-
-  return <span className="cutoff-countdown">{text}</span>;
-}
-
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   betting: 'Enter Bets',
   pairs: 'Pairs & Players',
   bets: 'Bet Ledger',
-  settlement: 'Settlement'
+  settlement: 'Settlement',
+  archives: 'Event Archives'
 };
 
 function Avatar({ name, photo, className = '' }) {
@@ -147,15 +114,15 @@ function ActionDialog({ dialog, onResult }) {
 function SettingsModal({ open, state, onClose, onSave, onReset }) {
   const [name, setName] = useState(state.tournamentName);
   const [fee, setFee] = useState(state.feePercent);
-  const [cutoff, setCutoff] = useState(toDateTimeLocalValue(state.cutoffAt));
+  const [publicDashboardEnabled, setPublicDashboardEnabled] = useState(state.publicDashboardEnabled !== false);
 
   useEffect(() => {
     if (open) {
       setName(state.tournamentName);
       setFee(state.feePercent);
-      setCutoff(toDateTimeLocalValue(state.cutoffAt));
+      setPublicDashboardEnabled(state.publicDashboardEnabled !== false);
     }
-  }, [open, state.tournamentName, state.feePercent, state.cutoffAt]);
+  }, [open, state.tournamentName, state.feePercent, state.publicDashboardEnabled]);
 
   if (!open) return null;
   return (
@@ -169,14 +136,22 @@ function SettingsModal({ open, state, onClose, onSave, onReset }) {
         </div>
         <form onSubmit={event => {
           event.preventDefault();
-          const cutoffDate = cutoff ? new Date(cutoff) : null;
-          const cutoffAt = cutoffDate && !Number.isNaN(cutoffDate.getTime()) ? cutoffDate.toISOString() : null;
-          onSave(name.trim() || 'Badminton Championship Pool', Math.min(25, Math.max(0, Number(fee || 0))), cutoffAt);
+          onSave(name.trim() || 'Badminton Championship Pool', Math.min(25, Math.max(0, Number(fee || 0))), publicDashboardEnabled);
         }}>
           <label>Tournament Name<input value={name} onChange={event => setName(event.target.value)} maxLength={80} /></label>
           <label>Organizer / Pool Deduction (%)<input value={fee} onChange={event => setFee(event.target.value)} type="number" min="0" max="25" step="0.5" /></label>
-          <label>Betting Cutoff Date & Time<input value={cutoff} onChange={event => setCutoff(event.target.value)} type="datetime-local" /></label>
-          <div className="callout">The prize pool equals total wagers minus this deduction. Set this to 0% if the organizer is not retaining any portion of the pool. The cutoff is saved as an absolute time and drives the live countdown shown on the dashboard.</div>
+          <div className="callout">The prize pool equals total wagers minus this deduction. Set this to 0% if the organizer is not retaining any portion of the pool.</div>
+          <div className="settings-toggle-row">
+            <div className="settings-toggle-copy">
+              <strong>Public Dashboard Visibility</strong>
+              <span>{publicDashboardEnabled ? 'The live public dashboard is currently visible.' : 'The public portal will show “No Ongoing Events”.'}</span>
+            </div>
+            <button type="button" className={`settings-switch ${publicDashboardEnabled ? 'on' : ''}`} role="switch" aria-checked={publicDashboardEnabled} onClick={() => setPublicDashboardEnabled(current => !current)}>
+              <span className="settings-switch-knob" />
+              <span className="settings-switch-label">{publicDashboardEnabled ? 'Enabled' : 'Disabled'}</span>
+            </button>
+          </div>
+          <div className="callout public-visibility-callout">When disabled, SmashPool removes the live event details from the public Firestore snapshot. Your Admin pool and Event Archives are not changed.</div>
           <div className="modal-actions">
             <button type="button" className="btn ghost" onClick={onReset}>Reset Tournament</button>
             <button type="submit" className="btn primary">Save Settings</button>
@@ -203,7 +178,7 @@ function Dashboard({ state, onView, onToggleBetting }) {
     <>
       <div className="hero card">
         <div className="hero-copy">
-          <div className="live-pool-row"><div className="tag">LIVE POOL</div><CutoffCountdown cutoffAt={state.cutoffAt} /></div>
+          <div className="tag">LIVE POOL</div>
           <h2>{state.tournamentName}</h2>
           <p>Live market activity, dynamic pari-mutuel returns, and proportional payouts—all in one browser dashboard.</p>
           <div className="hero-actions">
@@ -232,7 +207,7 @@ function Dashboard({ state, onView, onToggleBetting }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Changes with every bet</div></div>
           <div className="table-wrap"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
             <tbody>
               {marketPairs.length === 0 ? <tr><td colSpan="6"><div className="empty-state">No pairs yet. Add a pair from Pairs & Players.</div></td></tr> : marketPairs.map(pair => {
                 const onPair = totalOnPair(state, pair.id);
@@ -428,6 +403,7 @@ function Pairs({ state, updateState, toast, showConfirm, showNotice }) {
         pairs: current.pairs.filter(item => item.id !== pairId),
         bets: linkedBets.length ? current.bets.filter(bet => bet.pairId !== pairId) : current.bets,
         settledWinnerId: settlementAffected || current.settledWinnerId === pairId ? null : current.settledWinnerId,
+        settlementPreviewWinnerId: current.settlementPreviewWinnerId === pairId ? null : current.settlementPreviewWinnerId,
         preSettlementBettingOpen: settlementAffected || current.settledWinnerId === pairId ? null : current.preSettlementBettingOpen,
         bettingOpen: settlementAffected || current.settledWinnerId === pairId ? restoreOpen : current.bettingOpen
       };
@@ -527,22 +503,23 @@ function Ledger({ state, updateState, toast, showConfirm }) {
 }
 
 function Settlement({ state, updateState, toast, showConfirm, showNotice }) {
-  const [winnerId, setWinnerId] = useState(state.settledWinnerId || '');
+  const [winnerId, setWinnerId] = useState(state.settledWinnerId || state.settlementPreviewWinnerId || '');
   const finalized = Boolean(state.settledWinnerId);
-  const activeWinner = state.settledWinnerId || winnerId;
+  const activeWinner = state.settledWinnerId || state.settlementPreviewWinnerId || winnerId;
   const pair = state.pairs.find(item => item.id === activeWinner);
   const calc = activeWinner ? calculateSettlement(state, activeWinner) : null;
 
   useEffect(() => {
-    if (state.settledWinnerId) setWinnerId(state.settledWinnerId);
+    const storedWinner = state.settledWinnerId || state.settlementPreviewWinnerId || '';
+    if (storedWinner) setWinnerId(storedWinner);
     else if (winnerId && !state.pairs.some(pair => pair.id === winnerId)) setWinnerId('');
-  }, [state.settledWinnerId, state.pairs, winnerId]);
+  }, [state.settledWinnerId, state.settlementPreviewWinnerId, state.pairs, winnerId]);
 
   async function finalize() {
     if (!winnerId) { await showNotice('Select the winning pair first.', { title: 'Winning pair required' }); return; }
     const winner = state.pairs.find(item => item.id === winnerId);
     if (!(await showConfirm(`Finalize settlement for ${pairName(winner)}? Betting will be closed when the settlement is finalized.`, { title: 'Finalize settlement?', confirmText: 'Finalize' }))) return;
-    updateState(current => ({ ...current, preSettlementBettingOpen: current.bettingOpen, settledWinnerId: winnerId, bettingOpen: false }));
+    updateState(current => ({ ...current, preSettlementBettingOpen: current.bettingOpen, settledWinnerId: winnerId, settlementPreviewWinnerId: winnerId, bettingOpen: false }));
     toast('Pool settlement finalized');
   }
 
@@ -550,7 +527,7 @@ function Settlement({ state, updateState, toast, showConfirm, showNotice }) {
     const currentPair = state.pairs.find(item => item.id === state.settledWinnerId);
     const restoreOpen = typeof state.preSettlementBettingOpen === 'boolean' ? state.preSettlementBettingOpen : true;
     if (!(await showConfirm(`Undo the final payout for ${pairName(currentPair)}? The bets will remain unchanged and the settlement will return to preview mode.`, { title: 'Undo final payout?', confirmText: 'Undo Final Payout' }))) return;
-    updateState(current => ({ ...current, settledWinnerId: null, bettingOpen: restoreOpen, preSettlementBettingOpen: null }));
+    updateState(current => ({ ...current, settledWinnerId: null, settlementPreviewWinnerId: current.settlementPreviewWinnerId || currentPair?.id || null, bettingOpen: restoreOpen, preSettlementBettingOpen: null }));
     toast(restoreOpen ? 'Final payout undone • Betting reopened' : 'Final payout undone');
   }
 
@@ -564,7 +541,7 @@ function Settlement({ state, updateState, toast, showConfirm, showNotice }) {
   return <div className="split-layout settlement-layout">
     <section className="card form-card">
       <div className="panel-header"><div><div className="eyebrow">FINAL RESULT</div><h3>Settle Pool</h3></div></div>
-      <label>Winning Pair<select value={activeWinner} disabled={finalized} onChange={event => setWinnerId(event.target.value)}><option value="">Choose winning pair...</option><PairOptions state={state} /></select></label>
+      <label>Winning Pair<select value={activeWinner} disabled={finalized} onChange={event => { const nextWinner = event.target.value; setWinnerId(nextWinner); updateState(current => ({ ...current, settlementPreviewWinnerId: nextWinner || null })); }}><option value="">Choose winning pair...</option><PairOptions state={state} /></select></label>
       <div className="settlement-summary">
         <div className="summary-line"><span>Total Pool</span><strong>{currency(totalPool(state))}</strong></div>
         <div className="summary-line"><span>Deduction ({state.feePercent}%)</span><strong>{currency(totalPool(state) - prizePool(state))}</strong></div>
@@ -585,12 +562,113 @@ function Settlement({ state, updateState, toast, showConfirm, showNotice }) {
   </div>;
 }
 
+
+function ArchiveDate({ archive }) {
+  const value = archive?.archivedAt?.toDate?.() || (archive?.archivedAtIso ? new Date(archive.archivedAtIso) : null);
+  if (!value || Number.isNaN(value.getTime())) return <span>Archived event</span>;
+  return <span>{value.toLocaleString([], { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>;
+}
+
+function EventArchives({ archives, loading, error, selectedId, onSelect, onArchiveCurrent }) {
+  const selected = archives.find(item => item.id === selectedId) || archives[0] || null;
+  const archivedState = selected?.state ? migrateState(selected.state) : null;
+  const dashboard = selected?.dashboard || null;
+  const settlement = selected?.settlement || null;
+  const pairById = new Map((archivedState?.pairs || []).map(pair => [pair.id, pair]));
+  const archivedPairs = (dashboard?.pairs || []).map(pair => ({ ...(pairById.get(pair.id) || {}), ...pair }));
+  const ledger = archivedState?.bets?.slice().reverse() || [];
+
+  return <div className="archive-layout">
+    <section className="card panel archive-index-panel">
+      <div className="panel-header archive-index-header">
+        <div><div className="eyebrow">HISTORICAL RECORDS</div><h3>Event Archives</h3></div>
+        <button type="button" className="btn primary" onClick={onArchiveCurrent}>Archive Current Event</button>
+      </div>
+      <p className="muted archive-intro">Archives are frozen private snapshots. Reviewing one does not change the live tournament.</p>
+      {loading ? <div className="empty-state">Loading archived events…</div> : error ? <div className="auth-error">{error}</div> : archives.length ? <div className="archive-list">
+        {archives.map(archive => {
+          const summary = archive.dashboard || {};
+          const isSelected = selected?.id === archive.id;
+          return <button type="button" className={`archive-list-item ${isSelected ? 'active' : ''}`} key={archive.id} onClick={() => onSelect(archive.id)}>
+            <div className="archive-list-title">{archive.tournamentName || 'Untitled Event'}</div>
+            <div className="archive-list-date"><ArchiveDate archive={archive} /></div>
+            <div className="archive-list-meta"><span>{currency(summary.totalPool || 0)} pool</span><span>{Number(summary.totalBets || 0)} bets</span><span className={`archive-status ${archive.settlement?.finalized ? 'finalized' : ''}`}>{archive.settlement?.finalized ? 'Finalized' : (archive.settlement?.hasPreview ? 'Preview' : 'Unsettled')}</span></div>
+          </button>;
+        })}
+      </div> : <div className="empty-state">No archived events yet. Use “Archive Current Event” to preserve the current pool.</div>}
+    </section>
+
+    <section className="archive-review">
+      {!selected ? <div className="card panel"><div className="empty-state">Select an archived event to review it.</div></div> : <>
+        <section className="card panel archive-review-header">
+          <div className="archive-review-title"><div className="eyebrow">ARCHIVED EVENT</div><h2>{selected.tournamentName}</h2><div className="archive-review-meta"><ArchiveDate archive={selected} />{selected.archivedBy ? <span>Archived by {selected.archivedBy}</span> : null}<span>Snapshot v{selected.schemaVersion || 1}</span></div></div>
+          <span className={`pill ${settlement?.finalized ? 'open' : ''}`}>{settlement?.finalized ? 'FINALIZED' : (settlement?.hasPreview ? 'PREVIEW' : 'UNSETTLED')}</span>
+        </section>
+
+        <div className="stats-grid archive-stats-grid">
+          <article className="stat-card card"><div className="stat-label">Total Pool</div><div className="stat-value">{currency(dashboard?.totalPool || 0)}</div><div className="stat-meta">{Number(dashboard?.totalBets || 0)} accepted bets</div></article>
+          <article className="stat-card card"><div className="stat-label">Prize Pool</div><div className="stat-value">{currency(dashboard?.prizePool || 0)}</div><div className="stat-meta">After {Number(dashboard?.feePercent || 0)}% deduction</div></article>
+          <article className="stat-card card"><div className="stat-label">Bettors</div><div className="stat-value">{Number(dashboard?.uniqueBettors || 0)}</div><div className="stat-meta">Unique bettors</div></article>
+          <article className="stat-card card"><div className="stat-label">Most Bet-On Pair</div><div className="stat-value compact">{dashboard?.leaderName || '—'}</div><div className="stat-meta">{dashboard?.leaderName ? `${currency(dashboard.leaderBetTotal || 0)} wagered` : 'No bets recorded'}</div></article>
+        </div>
+
+        <section className="card panel archive-section">
+          <div className="panel-header"><div><div className="eyebrow">FROZEN DASHBOARD</div><h3>Projected Returns</h3></div><span className={`pill ${dashboard?.bettingOpen ? 'open' : ''}`}>{dashboard?.bettingOpen ? 'BETTING OPEN' : 'BETTING CLOSED'}</span></div>
+          <div className="table-wrap"><table><thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead><tbody>
+            {archivedPairs.length ? archivedPairs.map(pair => <tr key={pair.id}><td className="pair-cell"><div className="pair-identity"><PairAvatars pair={pair} className="market-avatars" /><strong>{pairName(pair)}</strong></div></td><td><GroupBadge group={pair.group} /></td><td className="money">{currency(pair.betTotal)}</td><td>{Number(pair.bettorCount || 0)}</td><td>{pct(pair.poolShare)}</td><td className="money">{pair.projectedReturnOn5 != null ? currency(pair.projectedReturnOn5) : '—'}</td></tr>) : <tr><td colSpan="6"><div className="empty-state">No pairs in this archived event.</div></td></tr>}
+          </tbody></table></div>
+        </section>
+
+        <section className="card panel archive-section">
+          <div className="panel-header"><div><div className="eyebrow">DASHBOARD ACTIVITY</div><h3>Recent Bet Activity</h3></div><span className="archive-count">Last {Math.min(10, Number(dashboard?.totalBets || 0))} bets</span></div>
+          <div className="activity-list archive-activity-list">
+            {dashboard?.recentBets?.length ? dashboard.recentBets.map(bet => <div className="activity-item" key={bet.id}><div className="activity-avatar">{playerInitials(bet.bettor)}</div><div className="activity-copy"><strong>{bet.bettor}</strong><span>{bet.group || '?'} • {bet.pairName}</span></div><div className="activity-amount">{currency(bet.amount)}</div></div>) : <div className="empty-mini">No recent betting activity was recorded.</div>}
+          </div>
+        </section>
+
+        <section className="card panel archive-section">
+          <div className="panel-header"><div><div className="eyebrow">ROSTER SNAPSHOT</div><h3>Pairs & Players</h3></div><span className="archive-count">{archivedState?.pairs?.length || 0} pairs</span></div>
+          <div className="archive-roster-grid">
+            {(archivedState?.pairs || []).map(pair => <article className="archive-pair-card" key={pair.id}><div className="archive-pair-top"><PairAvatars pair={pair} className="archive-pair-avatars" /><GroupBadge group={pair.group} /></div><strong>{pair.player1}</strong><span>&amp;</span><strong>{pair.player2}</strong></article>)}
+          </div>
+        </section>
+
+        <section className="card panel archive-section">
+          <div className="panel-header"><div><div className="eyebrow">AUDIT TRAIL</div><h3>Complete Bet Ledger</h3></div><span className="archive-count">{ledger.length} bets</span></div>
+          <div className="table-wrap"><table><thead><tr><th>Date / Time</th><th>Bettor</th><th>Pair</th><th>Group</th><th>Amount</th></tr></thead><tbody>
+            {ledger.length ? ledger.map(bet => { const pair = pairById.get(bet.pairId); return <tr key={bet.id}><td>{bet.createdAt ? new Date(bet.createdAt).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '—'}</td><td><strong>{bet.bettor}</strong></td><td>{pairName(pair)}</td><td>{pair ? <GroupBadge group={pair.group} /> : '?'}</td><td className="money">{currency(bet.amount)}</td></tr>; }) : <tr><td colSpan="5"><div className="empty-state">No bets were recorded.</div></td></tr>}
+          </tbody></table></div>
+        </section>
+
+        <section className="card panel archive-section">
+          <div className="panel-header"><div><div className="eyebrow">SETTLEMENT SNAPSHOT</div><h3>{settlement?.finalized ? 'Final Payout' : (settlement?.hasPreview ? 'Payout Preview' : 'Settlement Not Finalized')}</h3></div><span className={`pill ${settlement?.finalized ? 'open' : ''}`}>{settlement?.finalized ? 'FINAL' : (settlement?.hasPreview ? 'PREVIEW' : 'UNSETTLED')}</span></div>
+          <div className="archive-settlement-summary">
+            <div className="summary-line"><span>Total Pool</span><strong>{currency(settlement?.totalPool || dashboard?.totalPool || 0)}</strong></div>
+            <div className="summary-line"><span>Deduction</span><strong>{currency(settlement?.deduction || 0)}</strong></div>
+            <div className="summary-line"><span>Prize Pool</span><strong>{currency(settlement?.prizePool || dashboard?.prizePool || 0)}</strong></div>
+            <div className="summary-line"><span>Winning Pair</span><strong>{settlement?.winnerName || 'Not set'}</strong></div>
+            <div className="summary-line"><span>Winning Pair Bets</span><strong>{settlement?.winnerName ? currency(settlement.winnerTotal || 0) : '—'}</strong></div>
+          </div>
+          {settlement?.winnerName ? <div className="table-wrap archive-payout-table"><table><thead><tr><th>Bettor</th><th>Winning Bet</th><th>Share</th><th>Total Return</th><th>Profit</th></tr></thead><tbody>
+            {settlement.payouts?.length ? settlement.payouts.map(item => <tr key={item.id}><td>{item.bettor}</td><td>{currency(item.amount)}</td><td>{pct(Number(item.share || 0) * 100)}</td><td className="money"><strong>{currency(item.payout)}</strong></td><td>{item.profit >= 0 ? '+' : ''}{currency(item.profit)}</td></tr>) : <tr><td colSpan="5"><div className="empty-state">The winning pair had no wagers.</div></td></tr>}
+          </tbody></table></div> : <div className="archive-unsettled-note">This event was archived before a winning pair was selected. The complete pool, roster, and ledger are still preserved above.</div>}
+          {settlement?.hasPreview && <div className="archive-unsettled-note archive-preview-note">This payout distribution was captured in preview mode and was not finalized at the time of archiving.</div>}
+        </section>
+      </>}
+    </section>
+  </div>;
+}
+
 function AdminApp({ user }) {
   const [state, setState] = useState(makeDefaultState);
   const [hydrated, setHydrated] = useState(false);
   const [view, setView] = useState('dashboard');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [archives, setArchives] = useState([]);
+  const [archivesLoading, setArchivesLoading] = useState(false);
+  const [archivesError, setArchivesError] = useState('');
+  const [selectedArchiveId, setSelectedArchiveId] = useState('');
   const [toastMessage, setToastMessage] = useState('');
   const [dialog, setDialog] = useState(null);
   const dialogResolver = useRef(null);
@@ -632,6 +710,24 @@ function AdminApp({ user }) {
     }, 180);
     return () => clearTimeout(saveTimer.current);
   }, [state, hydrated]);
+
+  useEffect(() => {
+    if (view !== 'archives' || archivesLoading) return undefined;
+    let alive = true;
+    setArchivesLoading(true);
+    setArchivesError('');
+    loadEventArchives().then(items => {
+      if (!alive) return;
+      setArchives(items);
+      setSelectedArchiveId(current => current && items.some(item => item.id === current) ? current : (items[0]?.id || ''));
+    }).catch(error => {
+      console.error('Unable to load event archives:', error);
+      if (alive) setArchivesError('Unable to load event archives. Deploy the updated Firestore rules and try again.');
+    }).finally(() => {
+      if (alive) setArchivesLoading(false);
+    });
+    return () => { alive = false; };
+  }, [view]);
 
   useEffect(() => {
     const zoom = clampZoom(state.zoomFactor);
@@ -710,6 +806,22 @@ function AdminApp({ user }) {
     toast(nextOpen ? 'Betting reopened' : 'Betting closed');
   }
 
+  async function archiveCurrentEvent() {
+    const ok = await showConfirm(`Archive “${state.tournamentName}” exactly as it is now? This creates a permanent historical snapshot and does not reset or modify the live pool.`, { title: 'Archive current event?', confirmText: 'Archive Event' });
+    if (!ok) return;
+    try {
+      const archived = await archiveEvent(state, user?.email || '');
+      setArchives(current => [archived, ...current.filter(item => item.id !== archived.id)]);
+      setSelectedArchiveId(archived.id);
+      setArchivesError('');
+      setView('archives');
+      toast('Event archived');
+    } catch (error) {
+      console.error('Unable to archive event:', error);
+      await showNotice('The event could not be archived. Make sure the updated Firestore rules are deployed and try again.', { title: 'Archive failed', danger: true });
+    }
+  }
+
   function exportTournament() {
     downloadText('smashpool-tournament.json', JSON.stringify(state, null, 2), 'application/json;charset=utf-8');
     toast('Tournament exported');
@@ -761,7 +873,8 @@ function AdminApp({ user }) {
               ['betting','＋','Enter Bets'],
               ['pairs','♟','Pairs & Players'],
               ['bets','≡','Bet Ledger'],
-              ['settlement','✓','Settlement']
+              ['settlement','✓','Settlement'],
+              ['archives','▣','Event Archives']
             ].map(([id, icon, label]) => <button className={`nav-item ${view === id ? 'active' : ''}`} key={id} onClick={() => { setView(id); setMobileNavOpen(false); }}><span>{icon}</span>{label}</button>)}
           </nav>
           <div className="sidebar-footer"><div className="status-chip"><span className={`status-dot ${state.bettingOpen ? '' : 'closed-dot'}`} /><span>{state.bettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div><div className="local-note">Firebase Admin<br />{user?.email || 'Authenticated'}</div></div>
@@ -776,6 +889,7 @@ function AdminApp({ user }) {
               <input ref={importRef} className="hidden" type="file" accept="application/json,.json" onChange={importTournament} />
               <button className="btn ghost" onClick={() => importRef.current?.click()}>Import</button>
               <button className="btn ghost" onClick={exportTournament}>Export</button>
+              <button className="btn secondary archive-action-btn" onClick={archiveCurrentEvent}>Archive Event</button>
               <button className="btn secondary" onClick={() => setSettingsOpen(true)}>Pool Settings</button>
               <button className="btn ghost" onClick={() => signOut(auth)}>Sign Out</button>
               <button className="btn primary" onClick={() => setView('betting')}>+ New Bet</button>
@@ -788,11 +902,12 @@ function AdminApp({ user }) {
             {view === 'pairs' && <Pairs state={state} updateState={updateState} toast={toast} showConfirm={showConfirm} showNotice={showNotice} />}
             {view === 'bets' && <Ledger state={state} updateState={updateState} toast={toast} showConfirm={showConfirm} />}
             {view === 'settlement' && <Settlement state={state} updateState={updateState} toast={toast} showConfirm={showConfirm} showNotice={showNotice} />}
+            {view === 'archives' && <EventArchives archives={archives} loading={archivesLoading} error={archivesError} selectedId={selectedArchiveId} onSelect={setSelectedArchiveId} onArchiveCurrent={archiveCurrentEvent} />}
           </section>
         </main>
       </div>
 
-      <SettingsModal open={settingsOpen} state={state} onClose={() => setSettingsOpen(false)} onSave={(name, fee, cutoffAt) => { updateState(current => ({ ...current, tournamentName: name, feePercent: fee, cutoffAt })); setSettingsOpen(false); toast('Pool settings saved'); }} onReset={resetTournament} />
+      <SettingsModal open={settingsOpen} state={state} onClose={() => setSettingsOpen(false)} onSave={(name, fee, publicDashboardEnabled) => { updateState(current => ({ ...current, tournamentName: name, feePercent: fee, publicDashboardEnabled })); setSettingsOpen(false); toast(publicDashboardEnabled ? 'Settings saved • Public dashboard enabled' : 'Settings saved • Public dashboard hidden'); }} onReset={resetTournament} />
       <ActionDialog dialog={dialog} onResult={resolveDialog} />
       <div className={`toast ${toastMessage ? 'show' : ''}`}>{toastMessage}</div>
     </>
@@ -896,20 +1011,9 @@ function PublicDashboard({ data }) {
     <main className="public-main">
       <div className="hero card public-hero">
         <div className="hero-copy">
-          <div className="live-pool-row"><div className="tag">LIVE POOL</div><CutoffCountdown cutoffAt={data?.cutoffAt} /></div>
+          <div className="tag">LIVE POOL</div>
           <h2>{data?.tournamentName || 'SmashPool Tournament'}</h2>
-          <div className="event-notice">
-            <p>This private betting event is being held for the <strong>August 11 Monarch of the Court</strong>.</p>
-            <p>Participants may place wagers beginning at a <strong>minimum of $5.00</strong>. All bets and corresponding payments must be received no later than <strong>7:00 PM on August 11</strong>.</p>
-            <div className="event-payment-info">
-              <div className="event-payment-title">Payment Information</div>
-              <div><strong>Venmo:</strong> @Joseph-Vertido</div>
-              <div><strong>Zelle:</strong> (562) 213-8210</div>
-            </div>
-            <p>A percentage of the <strong>total betting pool will be retained by the house</strong>. The remaining prize pool will be distributed proportionally among the bettors who selected the winning pair.</p>
-            <p>Individual payouts will be determined based on the amount wagered by each bettor relative to the total amount wagered on the winning pair.</p>
-            <p className="event-good-luck"><strong>Best of luck to all participants and bettors!</strong></p>
-          </div>
+          <p>Live pari-mutuel market activity. Projected returns change automatically as wagers are added by the tournament administrator.</p>
         </div>
         <div className="hero-orbit" aria-hidden="true"><div className="shuttle">◒</div><div className="orbit-ring ring-a" /><div className="orbit-ring ring-b" /></div>
       </div>
@@ -932,7 +1036,7 @@ function PublicDashboard({ data }) {
         <section className="card panel wide-panel">
           <div className="panel-header"><div><div className="eyebrow">LIVE MARKET</div><h3>Projected Returns</h3></div><div className="legend"><span className="legend-dot" /> Tap a pair to see wager amounts</div></div>
           <div className="table-wrap public-market-table"><table>
-            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Payout (On $5 Bet)</th></tr></thead>
+            <thead><tr><th>Pair</th><th>Group</th><th>Bet On Pair</th><th>Bettors</th><th>Pool Share</th><th>Projected Return (On $5 Bet)</th></tr></thead>
             <tbody>{pairs.length ? pairs.map(pair => {
               const expanded = expandedPairs.has(pair.id);
               return <React.Fragment key={pair.id}>
@@ -962,7 +1066,7 @@ function PublicDashboard({ data }) {
                   </div>
                   <div className="public-pair-primary">
                     <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected Payout (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
+                    <div><span>Projected Return (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-metrics">
                     <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
@@ -989,6 +1093,23 @@ function PublicDashboard({ data }) {
   </div>;
 }
 
+function NoOngoingEvents() {
+  return <div className="public-dashboard public-empty-dashboard">
+    <header className="public-topbar">
+      <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Dashboard</div></div></div>
+    </header>
+    <main className="public-empty-main">
+      <section className="card public-empty-card">
+        <div className="public-empty-icon" aria-hidden="true">◇</div>
+        <div className="eyebrow">SMASHPOOL</div>
+        <h1>No Ongoing Events</h1>
+        <p>There is no active betting event available for public viewing right now.</p>
+        <span>Please check back when the next event is live.</span>
+      </section>
+    </main>
+  </div>;
+}
+
 function PublicApp() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1010,6 +1131,7 @@ function PublicApp() {
   if (!firebaseReady) return <FirebaseSetupRequired />;
   if (loading) return <div className="loading-screen"><div className="brand-mark">S</div><div><strong>SmashPool</strong><span>Connecting to live dashboard…</span></div></div>;
   if (error) return <div className="auth-shell"><div className="auth-card card"><h2>Dashboard unavailable</h2><div className="auth-error">{error}</div></div></div>;
+  if (data?.publicDashboardEnabled === false) return <NoOngoingEvents />;
   if (!data) return <div className="auth-shell"><div className="auth-card card"><div className="brand auth-brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Live Dashboard</div></div></div><h2>No tournament published yet</h2><p className="muted">Sign in to the admin interface once to initialize the Firebase pool.</p></div></div>;
   return <PublicDashboard data={data} />;
 }

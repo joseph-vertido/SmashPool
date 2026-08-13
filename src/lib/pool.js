@@ -16,9 +16,10 @@ export const defaultPairs = [
 export const makeDefaultState = () => ({
   tournamentName: 'Badminton Championship Pool',
   feePercent: 0,
-  cutoffAt: '2026-08-12T02:00:00.000Z',
   bettingOpen: true,
+  publicDashboardEnabled: true,
   settledWinnerId: null,
+  settlementPreviewWinnerId: null,
   preSettlementBettingOpen: null,
   zoomFactor: 1,
   pairs: structuredClone(defaultPairs),
@@ -51,14 +52,13 @@ export function migrateState(saved) {
     next.settledWinnerId = null;
     next.preSettlementBettingOpen = null;
   }
+  if (next.settlementPreviewWinnerId && !validIds.has(next.settlementPreviewWinnerId)) {
+    next.settlementPreviewWinnerId = null;
+  }
+  if (next.settledWinnerId) next.settlementPreviewWinnerId = next.settledWinnerId;
   next.zoomFactor = clampZoom(next.zoomFactor);
   next.feePercent = Math.min(25, Math.max(0, Number(next.feePercent || 0)));
-  if (next.cutoffAt) {
-    const cutoff = new Date(next.cutoffAt);
-    next.cutoffAt = Number.isNaN(cutoff.getTime()) ? null : cutoff.toISOString();
-  } else {
-    next.cutoffAt = null;
-  }
+  next.publicDashboardEnabled = next.publicDashboardEnabled !== false;
   return next;
 }
 
@@ -222,7 +222,109 @@ export function downloadText(filename, text, mime = 'text/plain;charset=utf-8') 
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+
+export function buildAdminDashboardSnapshot(state) {
+  const total = totalPool(state);
+  const prize = prizePool(state);
+  const uniqueBettors = new Set(
+    state.bets.map(bet => String(bet.bettor || '').trim().toLowerCase()).filter(Boolean)
+  ).size;
+  const originalOrder = new Map(state.pairs.map((pair, index) => [pair.id, index]));
+  const pairs = state.pairs.map(pair => {
+    const pairBets = state.bets.filter(bet => bet.pairId === pair.id);
+    const betTotal = pairBets.reduce((sum, bet) => sum + Number(bet.amount || 0), 0);
+    const projection = projectedBet(state, pair.id, 5);
+    const bettorMap = new Map();
+    pairBets.forEach(bet => {
+      const bettor = String(bet.bettor || '').trim() || 'Unknown';
+      const key = bettor.toLowerCase();
+      const existing = bettorMap.get(key) || { bettor, amount: 0, betCount: 0 };
+      existing.amount += Number(bet.amount || 0);
+      existing.betCount += 1;
+      bettorMap.set(key, existing);
+    });
+    const bettors = Array.from(bettorMap.values()).map(item => ({
+      ...item,
+      projectedPayout: betTotal ? prize * (item.amount / betTotal) : 0
+    })).sort((a, b) => (b.amount - a.amount) || a.bettor.localeCompare(b.bettor));
+    return {
+      id: pair.id,
+      group: pair.group,
+      player1: pair.player1,
+      player2: pair.player2,
+      betTotal,
+      bettorCount: bettors.length,
+      bettors,
+      poolShare: total ? betTotal / total * 100 : 0,
+      projectedReturnOn5: projection?.payout ?? null
+    };
+  }).sort((a, b) => (b.betTotal - a.betTotal) || (originalOrder.get(a.id) - originalOrder.get(b.id)));
+  const leader = pairs.find(pair => pair.betTotal > 0) || null;
+  const recentBets = state.bets.slice().reverse().slice(0, 10).map(bet => {
+    const pair = state.pairs.find(item => item.id === bet.pairId);
+    return {
+      ...bet,
+      pairName: pairName(pair),
+      group: pair?.group || ''
+    };
+  });
+
+  return {
+    tournamentName: state.tournamentName,
+    feePercent: Number(state.feePercent || 0),
+    bettingOpen: Boolean(state.bettingOpen),
+    publicDashboardEnabled: state.publicDashboardEnabled !== false,
+    totalPool: total,
+    prizePool: prize,
+    deduction: total - prize,
+    uniqueBettors,
+    totalBets: state.bets.length,
+    leaderId: leader?.id || null,
+    leaderName: leader ? pairName(leader) : null,
+    leaderBetTotal: leader?.betTotal || 0,
+    pairs,
+    recentBets
+  };
+}
+
+export function buildSettlementSnapshot(state) {
+  const finalized = Boolean(state.settledWinnerId);
+  const selectedWinnerId = state.settledWinnerId || state.settlementPreviewWinnerId || null;
+  const winner = selectedWinnerId ? state.pairs.find(pair => pair.id === selectedWinnerId) : null;
+  const calc = winner ? calculateSettlement(state, winner.id) : null;
+  const total = totalPool(state);
+  const prize = prizePool(state);
+
+  return {
+    finalized,
+    hasPreview: Boolean(winner) && !finalized,
+    status: finalized ? 'Finalized' : (winner ? 'Preview' : 'Unsettled'),
+    winnerId: winner?.id || null,
+    winnerName: winner ? pairName(winner) : null,
+    winnerGroup: winner?.group || null,
+    bettingOpenAtArchive: Boolean(state.bettingOpen),
+    preSettlementBettingOpen: typeof state.preSettlementBettingOpen === 'boolean' ? state.preSettlementBettingOpen : null,
+    totalPool: total,
+    deduction: total - prize,
+    prizePool: prize,
+    winnerTotal: calc?.winnerTotal || 0,
+    payouts: calc?.payouts?.map(item => ({
+      id: item.id,
+      bettor: item.bettor,
+      amount: Number(item.amount || 0),
+      share: Number(item.share || 0),
+      payout: Number(item.payout || 0),
+      profit: Number(item.profit || 0),
+      createdAt: item.createdAt || null
+    })) || []
+  };
+}
+
 export function buildPublicDashboard(state) {
+  if (state.publicDashboardEnabled === false) {
+    return { publicDashboardEnabled: false };
+  }
+
   const total = totalPool(state);
   const prize = prizePool(state);
   const originalOrder = new Map(state.pairs.map((pair, index) => [pair.id, index]));
@@ -280,8 +382,8 @@ export function buildPublicDashboard(state) {
   return {
     tournamentName: state.tournamentName,
     feePercent: Number(state.feePercent || 0),
-    cutoffAt: state.cutoffAt || null,
     bettingOpen: Boolean(state.bettingOpen),
+    publicDashboardEnabled: true,
     totalPool: total,
     prizePool: prize,
     uniqueBettors,

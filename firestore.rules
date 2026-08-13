@@ -18,6 +18,13 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+
+    // Private historical event archives. Only approved admins can read or create them.
+    match /eventArchives/{archiveId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // Sanitized dashboard projection. This is the only tournament data public users can read.
     match /publicPools/{poolId} {
       allow read: if true;

@@ -1,10 +1,28 @@
 # SmashPool React + Firebase v2.1.18
 
-## v2.1.18
-- Renamed **Projected Return (On $5 Bet)** to **Projected Payout (On $5 Bet)** across Admin and Public dashboard views.
-- Added a **Betting Cutoff Date & Time** setting under Admin → Pool Settings.
-- Added a live remaining-time countdown beside the **LIVE POOL** pill on both Admin and Public dashboards.
-- Existing tournaments migrate with the August 11, 2026 7:00 PM Pacific cutoff for the Monarch of the Court event; admins can change it at any time.
+
+## v2.1.18 — Public Dashboard Visibility
+
+- Added **Public Dashboard Visibility** to Admin → Pool Settings.
+- When enabled, the normal live public dashboard is published and shown.
+- When disabled, the public portal shows **No Ongoing Events** instead of the betting dashboard.
+- Hidden mode publishes only a minimal visibility flag to `publicPools/<poolId>`; live totals, pairs, wagers, and activity are removed from the public snapshot while hidden.
+- The private Admin pool and Event Archives remain unchanged.
+
+## v2.1.17 Event Archives
+
+- Added a private **Event Archives** section to the authenticated Admin portal.
+- **Archive Event** creates a frozen historical Firestore snapshot of the current tournament without changing or resetting the live pool.
+- Each archive preserves the complete private tournament state: pool settings, betting-open state, all pairs and players, profile-photo references, every bet/ledger entry, dashboard totals and projected returns, per-pair bettor/wager breakdowns, recent dashboard activity, and settlement information.
+- Settlement snapshots support three states: **Finalized**, **Preview** (winning pair selected but payout not finalized), and **Unsettled**. Preview archives preserve the selected winner and calculated payout distribution.
+- Archived events are review-only in the UI and do not affect the current live pool.
+- Archives are stored in the private `eventArchives/*` collection. Approved admins can create and read archives, while browser updates/deletes are blocked to keep historical snapshots immutable. The public portal cannot access them.
+
+**Important:** deploy the included updated Firestore rules before using Event Archives:
+
+```bash
+firebase deploy --only firestore:rules
+```
 
 ## v2.1.15
 - **Projected Return (On $5 Bet)** now displays only the projected dollar payout, e.g. `$10.65`.
@@ -127,7 +145,7 @@ Only users with an active `admins/{uid}` document are allowed to access the full
 The included `firestore.rules` gives:
 
 - Everyone: read access to `publicPools/*` only.
-- Approved admins: read/write access to `adminPools/*` and write access to `publicPools/*`.
+- Approved admins: read/write access to `adminPools/*`, create/read access to immutable `eventArchives/*`, plus write access to `publicPools/*`.
 - Nobody from the browser: permission to create or modify admin allow-list records.
 
 Using Firebase CLI:
@@ -196,6 +214,13 @@ admins/
 adminPools/
   main
     state: { full private tournament state + bet ledger }
+
+eventArchives/
+  <archive-id>
+    state: { frozen full private tournament state }
+    dashboard: { frozen admin dashboard metrics, pair returns, recent activity }
+    settlement: { finalized/preview/unsettled status + payout snapshot }
+    archivedAt / archivedAtIso / archivedBy
 
 publicPools/
   main
@@ -287,10 +312,3 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - The public dashboard no longer depends on optional `projectedReturn5` / `fivePays` fields being present in the Firestore snapshot.
 - This fixes the projected return displaying as an em dash (`—`) when viewing older or not-yet-republished public snapshots.
 - The formula matches the Admin dashboard's prospective $5 wager logic.
-
-
-## v2.1.17 — Private event notice
-
-- Replaced the short public Dashboard market description with the full **August 11 Monarch of the Court** private betting event notice.
-- Added the **$5.00 minimum wager**, **7:00 PM August 11** betting/payment cutoff, Venmo and Zelle payment information, house-retained pool explanation, and proportional payout explanation.
-- Added compact responsive styling for the longer notice and payment block on desktop and mobile.

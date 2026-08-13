@@ -1,8 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import {
+  addDoc,
+  collection,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   onSnapshot,
   serverTimestamp,
@@ -16,7 +19,9 @@ import {
   uploadString
 } from 'firebase/storage';
 import {
+  buildAdminDashboardSnapshot,
   buildPublicDashboard,
+  buildSettlementSnapshot,
   migrateState,
   safePhotoSrc
 } from './pool.js';
@@ -83,6 +88,35 @@ export function listenPublicDashboard(onData, onError) {
   return onSnapshot(publicPoolRef(), snapshot => {
     onData(snapshot.exists() ? snapshot.data() : null);
   }, onError);
+}
+
+
+
+export async function archiveEvent(state, archivedBy = '') {
+  if (!db) throw new Error('Firebase is not configured.');
+  const cleanState = JSON.parse(JSON.stringify(migrateState(state)));
+  const archivedAtIso = new Date().toISOString();
+  const snapshot = {
+    schemaVersion: 1,
+    appVersion: '2.1.18',
+    poolId: POOL_ID,
+    tournamentName: cleanState.tournamentName,
+    archivedBy: String(archivedBy || ''),
+    archivedAtIso,
+    archivedAt: serverTimestamp(),
+    state: cleanState,
+    dashboard: buildAdminDashboardSnapshot(cleanState),
+    settlement: buildSettlementSnapshot(cleanState)
+  };
+  const reference = await addDoc(collection(db, 'eventArchives'), snapshot);
+  return { id: reference.id, ...snapshot, archivedAt: null };
+}
+
+export async function loadEventArchives() {
+  if (!db) return [];
+  const snapshots = await getDocs(collection(db, 'eventArchives'));
+  return snapshots.docs.map(snapshot => ({ id: snapshot.id, ...snapshot.data() }))
+    .sort((a, b) => String(b.archivedAtIso || '').localeCompare(String(a.archivedAtIso || '')));
 }
 
 export async function uploadProfilePhoto(pairId, playerNumber, dataUrl) {
