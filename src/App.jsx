@@ -1371,7 +1371,7 @@ function NoOngoingEvents() {
         <div className="public-empty-icon" aria-hidden="true">◇</div>
         <div className="eyebrow">SMASHPOOL</div>
         <h1>No Ongoing Events</h1>
-        <p>There is no active betting event available for public viewing right now.</p>
+        <p>There is no active event available for public viewing right now.</p>
         <span>Please check back when the next event is live.</span>
       </section>
     </main>

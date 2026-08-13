@@ -1,3 +1,7 @@
+## v2.1.22 — Public inactive-event wording
+
+- Simplified the hidden public-dashboard message to: **“There is no active event available for public viewing right now.”**
+
 ## v2.1.21 — Version label in public header
 
 - Replaced the public top-bar subtitle `Live Pari-Mutuel Dashboard` with the current application version.
