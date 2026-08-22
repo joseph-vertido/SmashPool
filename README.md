@@ -341,3 +341,8 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - Added a compact **Admin** shortcut to the public top bar that links directly to `/admin`.
 - The shortcut is also available on the **No Ongoing Events** public screen.
 - Public header version remains tied to `package.json`.
+## v2.1.23
+
+- Added a **SmashPool Dashboard** link to the Admin navigation panel.
+- The link returns to the public dashboard at `/` and is available in both desktop and mobile Admin navigation.
+

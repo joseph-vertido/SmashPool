@@ -1129,6 +1129,7 @@ function AdminApp({ user }) {
         <aside className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
           <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Manager</div></div><button type="button" className="mobile-sidebar-close" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>×</button></div>
           <nav className="nav" aria-label="Main navigation">
+            <a className="nav-item admin-public-dashboard-link" href="/" onClick={() => setMobileNavOpen(false)}><span>↗</span>SmashPool Dashboard</a>
             {[
               ['dashboard','⌂','Dashboard'],
               ['betting','＋','Enter Bets'],
