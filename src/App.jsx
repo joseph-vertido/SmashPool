@@ -1127,7 +1127,7 @@ function AdminApp({ user }) {
     <>
       <div className="app-shell">
         <aside className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
-          <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Manager</div></div><button type="button" className="mobile-sidebar-close" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>×</button></div>
+          <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Manager · v{packageInfo.version}</div></div><button type="button" className="mobile-sidebar-close" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>×</button></div>
           <nav className="nav" aria-label="Main navigation">
             <a className="nav-item admin-public-dashboard-link" href="/" onClick={() => setMobileNavOpen(false)}><span>↗</span>SmashPool Dashboard</a>
             {[
@@ -1328,18 +1328,13 @@ function PublicDashboard({ data }) {
                 <button className="public-pair-card-toggle" type="button" onClick={() => togglePair(pair.id)} aria-expanded={expanded}>
                   <div className="public-pair-card-head">
                     <div className="pair-identity"><PairAvatars pair={pair} className="mobile-market-avatars" /><div className="public-pair-names"><strong>{pairName(pair)}</strong></div></div>
+                    <div className="public-pair-card-actions"><GroupBadge group={pair.group} /><span className="pair-expand-chevron" aria-hidden="true">⌄</span></div>
                   </div>
-                  <div className="public-pair-group-row">
-                    <GroupBadge group={pair.group} />
-                    <span className="pair-expand-chevron" aria-hidden="true">⌄</span>
-                  </div>
-                  <div className="public-pair-primary">
-                    <div><span>Bet on pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
-                    <div><span>Projected Payout (On $5 Bet)</span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
-                  </div>
-                  <div className="public-pair-metrics">
-                    <div><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
-                    <div><span>Pool share</span><strong>{pct(pair.poolShare)}</strong></div>
+                  <div className="public-pair-stats-table" role="presentation">
+                    <div className="public-pair-stat"><span>Bet on Pair</span><strong className="money">{currency(pair.betTotal)}</strong></div>
+                    <div className="public-pair-stat"><span>Bettors</span><strong>{Number(pair.bettorCount || 0)}</strong></div>
+                    <div className="public-pair-stat"><span>Pool Share</span><strong>{pct(pair.poolShare)}</strong></div>
+                    <div className="public-pair-stat payout"><span>Projected Payout <small>(On $5 Bet)</small></span><strong className="multiplier">{publicProjectedPayout(data, pair, 5) != null ? currency(publicProjectedPayout(data, pair, 5)) : '—'}</strong></div>
                   </div>
                   <div className="public-pair-expand-label">{expanded ? 'Hide wager details' : `View ${Number(pair.bettorCount || 0)} anonymous ${Number(pair.bettorCount || 0) === 1 ? 'bettor' : 'bettors'}`}</div>
                 </button>

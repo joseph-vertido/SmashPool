@@ -346,3 +346,6 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - Added a **SmashPool Dashboard** link to the Admin navigation panel.
 - The link returns to the public dashboard at `/` and is available in both desktop and mobile Admin navigation.
 
+
+## v2.1.25
+- Shows the current app version in both the Public and Admin dashboard branding.
