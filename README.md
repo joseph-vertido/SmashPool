@@ -351,7 +351,7 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - Shows the current app version in both the Public and Admin dashboard branding.
 
 
-## v2.1.26
+## v2.1.27
 
 - Increased mobile pair-stats table header text for Bet on Pair, Bettors, Pool Share, and Projected Payout.
 - Narrowed the Bet on Pair column and gave the Projected Payout column more room.

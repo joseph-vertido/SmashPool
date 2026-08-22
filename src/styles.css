@@ -908,3 +908,26 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-pair-stat span small{font-size:7.5px}
   .public-pair-stat strong{font-size:13px}
 }
+
+
+/* v2.1.27: narrow Projected Payout on mobile and give the other stats more room. */
+@media(max-width:760px){
+  .public-pair-stats-table{
+    grid-template-columns:minmax(64px,.82fr) minmax(56px,.70fr) minmax(70px,.86fr) minmax(106px,1.22fr);
+  }
+  .public-pair-stat.payout span{white-space:nowrap;letter-spacing:.025em}
+  .public-pair-stat.payout span small{white-space:nowrap}
+}
+
+@media(max-width:430px){
+  .public-pair-stats-table{
+    grid-template-columns:minmax(58px,.76fr) minmax(50px,.64fr) minmax(64px,.80fr) minmax(100px,1.16fr);
+  }
+  .public-pair-stat.payout{padding-left:3px;padding-right:2px}
+  .public-pair-stat.payout span{letter-spacing:.01em}
+}
+
+@media(max-width:350px){
+  .public-pair-stats-table{grid-template-columns:.78fr .65fr .82fr 1.15fr}
+  .public-pair-stat.payout span{font-size:7.5px;letter-spacing:0}
+}
