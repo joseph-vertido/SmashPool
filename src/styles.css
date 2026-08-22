@@ -875,3 +875,36 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .public-pair-stat span{font-size:7px;letter-spacing:.025em}
   .public-pair-stat strong{font-size:12px}
 }
+
+
+/* v2.1.26: improve mobile stats-table readability and rebalance column widths. */
+@media(max-width:760px){
+  .public-pair-stats-table{
+    grid-template-columns:minmax(58px,.68fr) minmax(54px,.62fr) minmax(68px,.78fr) minmax(128px,1.55fr);
+  }
+  .public-pair-stat span{
+    font-size:10px;
+    line-height:1.12;
+    letter-spacing:.04em;
+  }
+  .public-pair-stat span small{font-size:9px;letter-spacing:.025em}
+  .public-pair-stat strong{font-size:15px;line-height:1.15}
+}
+
+@media(max-width:430px){
+  .public-pair-stats-table{
+    grid-template-columns:minmax(52px,.62fr) minmax(46px,.56fr) minmax(58px,.70fr) minmax(116px,1.5fr);
+  }
+  .public-pair-stat{padding-left:5px;padding-right:5px}
+  .public-pair-stat span{font-size:9px;min-height:22px;letter-spacing:.025em}
+  .public-pair-stat span small{font-size:8px}
+  .public-pair-stat strong{font-size:14px}
+}
+
+@media(max-width:350px){
+  .public-pair-stats-table{grid-template-columns:.58fr .55fr .7fr 1.42fr}
+  .public-pair-stat{padding-left:3px;padding-right:3px}
+  .public-pair-stat span{font-size:8px;letter-spacing:.015em}
+  .public-pair-stat span small{font-size:7.5px}
+  .public-pair-stat strong{font-size:13px}
+}
