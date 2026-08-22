@@ -1,7 +1,3 @@
-## v2.1.22 — Public inactive-event wording
-
-- Simplified the hidden public-dashboard message to: **“There is no active event available for public viewing right now.”**
-
 ## v2.1.21 — Version label in public header
 
 - Replaced the public top-bar subtitle `Live Pari-Mutuel Dashboard` with the current application version.
@@ -340,3 +336,8 @@ This means the projection incorporates the effect of the new $5 wager itself ins
 - The public dashboard no longer depends on optional `projectedReturn5` / `fivePays` fields being present in the Firestore snapshot.
 - This fixes the projected return displaying as an em dash (`—`) when viewing older or not-yet-republished public snapshots.
 - The formula matches the Admin dashboard's prospective $5 wager logic.
+
+## v2.1.22
+- Added a compact **Admin** shortcut to the public top bar that links directly to `/admin`.
+- The shortcut is also available on the **No Ongoing Events** public screen.
+- Public header version remains tied to `package.json`.

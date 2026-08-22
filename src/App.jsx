@@ -1273,7 +1273,7 @@ function PublicDashboard({ data }) {
   return <div className="public-dashboard">
     <header className="public-topbar">
       <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">v{packageInfo.version}</div></div></div>
-      <div className="status-chip"><span className={`status-dot ${publicBettingOpen ? '' : 'closed-dot'}`} /><span>{publicBettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div>
+      <div className="public-topbar-actions"><a className="public-admin-link" href="/admin">Admin</a><div className="status-chip"><span className={`status-dot ${publicBettingOpen ? '' : 'closed-dot'}`} /><span>{publicBettingOpen ? 'Betting Open' : 'Betting Closed'}</span></div></div>
     </header>
 
     <main className="public-main">
@@ -1364,14 +1364,15 @@ function PublicDashboard({ data }) {
 function NoOngoingEvents() {
   return <div className="public-dashboard public-empty-dashboard">
     <header className="public-topbar">
-      <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">Pari-Mutuel Dashboard</div></div></div>
+      <div className="brand"><div className="brand-mark">S</div><div><div className="brand-name">SmashPool</div><div className="brand-subtitle">v{packageInfo.version}</div></div></div>
+      <div className="public-topbar-actions"><a className="public-admin-link" href="/admin">Admin</a></div>
     </header>
     <main className="public-empty-main">
       <section className="card public-empty-card">
         <div className="public-empty-icon" aria-hidden="true">◇</div>
         <div className="eyebrow">SMASHPOOL</div>
         <h1>No Ongoing Events</h1>
-        <p>There is no active event available for public viewing right now.</p>
+        <p>There is no active betting event available for public viewing right now.</p>
         <span>Please check back when the next event is live.</span>
       </section>
     </main>
